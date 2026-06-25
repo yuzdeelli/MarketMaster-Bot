@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel - Market Master</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a12;--card:#12121e;--border:#1e1e2e;--accent:#00d4ff;--accent2:#00ff96;--danger:#ff4757;--warn:#ffa502;--text:#e0e0e0;--text2:#888;--hover:#1a1a2e}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* NAV */
+.nav{background:#0d0d1a;border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{font-size:18px;font-weight:700;color:var(--accent)}
+.nav-brand span{color:var(--accent2)}
+.nav-links{display:flex;gap:16px;align-items:center}
+.nav-links a{color:var(--text2);font-size:13px;padding:6px 12px;border-radius:6px;transition:.2s}
+.nav-links a:hover,.nav-links a.active{background:var(--hover);color:var(--accent);text-decoration:none}
+.nav-status{display:flex;gap:8px;align-items:center;font-size:12px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.status-dot.on{background:var(--accent2);box-shadow:0 0 6px var(--accent2)}
+.status-dot.off{background:var(--danger)}
+
+/* LAYOUT */
+.container{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 50px)}
+.sidebar{background:#0d0d1a;border-right:1px solid var(--border);padding:16px 0}
+.sidebar a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:var(--text2);font-size:13px;transition:.2s;border-left:3px solid transparent}
+.sidebar a:hover,.sidebar a.active{background:var(--hover);color:var(--accent);border-left-color:var(--accent);text-decoration:none}
+.sidebar a svg{width:16px;height:16px;opacity:.6}
+.main{padding:24px;overflow-y:auto}
+
+/* CARDS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.stat-card .label{font-size:12px;color:var(--text2);margin-bottom:4px}
+.stat-card .value{font-size:24px;font-weight:700}
+.stat-card .value.accent{color:var(--accent)}
+.stat-card .value.green{color:var(--accent2)}
+.stat-card .value.red{color:var(--danger)}
+.stat-card .value.warn{color:var(--warn)}
+
+/* TABLE */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px}
+.table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.table-header h3{font-size:15px;font-weight:600}
+table{width:100%;border-collapse:collapse}
+th{background:#0d0d1a;padding:10px 16px;text-align:left;font-size:12px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+td{padding:10px 16px;border-top:1px solid var(--border);font-size:13px}
+tr:hover{background:var(--hover)}
+.badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge.sell{background:rgba(0,212,255,.15);color:var(--accent)}
+.badge.buy{background:rgba(255,71,87,.15);color:var(--danger)}
+
+/* BUTTONS */
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{opacity:.85}
+.btn-primary{background:var(--accent);color:#000}
+.btn-success{background:var(--accent2);color:#000}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-warn{background:var(--warn);color:#000}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+/* FORMS */
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px}
+.form-input{width:100%;padding:10px 14px;background:#0a0a12;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;transition:.2s}
+.form-input:focus{border-color:var(--accent)}
+select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.form-row{display:flex;gap:12px;align-items:end}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:200}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:90%;max-width:500px}
+.modal h3{margin-bottom:16px;font-size:16px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{padding:10px 20px;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* LOG */
+.log-box{background:#0a0a12;border:1px solid var(--border);border-radius:8px;padding:12px;font-family:'Consolas',monospace;font-size:12px;max-height:400px;overflow-y:auto;line-height:1.8}
+.log-entry{color:var(--text2)}
+.log-entry .time{color:var(--accent)}
+.log-entry .ok{color:var(--accent2)}
+.log-entry .err{color:var(--danger)}
+
+/* SEARCH */
+.search-bar{position:relative;margin-bottom:16px}
+.search-bar input{width:100%;padding:10px 14px 10px 38px;background:#0a0a12;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none}
+.search-bar input:focus{border-color:var(--accent)}
+.search-bar svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text2)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--accent2);border-radius:10px;padding:12px 20px;font-size:13px;color:var(--accent2);z-index:300;animation:slideIn .3s;display:none}
+.toast.show{display:block}
+.toast.error{border-color:var(--danger);color:var(--danger)}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+.container{grid-template-columns:1fr}
+.sidebar{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="nav">
+  <div class="nav-brand">MARKET <span>MASTER</span> <span style="color:var(--text2);font-size:12px;font-weight:400">Admin</span></div>
+  <div class="nav-links">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/admin" class="active">Admin</a>
+    <a href="/katalog">Katalog</a>
+  </div>
+  <div class="nav-status">
+    <span class="status-dot on" id="serverDot"></span>
+    <span id="serverStatus">Sunucu Açık</span>
+  </div>
+</nav>
+
+<div class="container">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <a href="#overview" class="active" onclick="showSection('overview')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Genel Bakis
+    </a>
+    <a href="#items" onclick="showSection('items')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      Item Yonetimi
+    </a>
+    <a href="#prices" onclick="showSection('prices')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      Fiyat Kontrolu
+    </a>
+    <a href="#sellers" onclick="showSection('sellers')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Seller Izleme
+    </a>
+    <a href="#scan" onclick="showSection('scan')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16"/></svg>
+      Tarama Kontrolu
+    </a>
+    <a href="#cleanup" onclick="showSection('cleanup')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      Veri Temizligi
+    </a>
+    <a href="#backup" onclick="showSection('backup')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      DB Yedekleme
+    </a>
+    <a href="#logs" onclick="showSection('logs')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Loglar
+    </a>
+    <a href="#settings" onclick="showSection('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Ayarlar
+    </a>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <div id="sec-overview" class="sec active">
+      <h2 style="margin-bottom:20px">Genel Bakis</h2>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">Toplam Kayit</div><div class="value accent" id="statTotal">-</div></div>
+        <div class="stat-card"><div class="label">Aktif Item</div><div class="value green" id="statItems">-</div></div>
+        <div class="stat-card"><div class="label">Satisci Sayisi</div><div class="value warn" id="statSellers">-</div></div>
+        <div class="stat-card"><div class="label">Sunucu Sayisi</div><div class="value" id="statServers">-</div></div>
+        <div class="stat-card"><div class="label">Son Tarama</div><div class="value" id="statLastScan" style="font-size:14px">-</div></div>
+        <div class="stat-card"><div class="label">Bugunku Eklenen</div><div class="value green" id="statToday">-</div></div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-header"><h3>Son Eklenenler (Son 20)</h3></div>
+        <table>
+          <thead><tr><th>Zaman</th><th>Item</th><th>Lvl</th><th>Fiyat</th><th>Tip</th><th>Sunucu</th><th>Satisci</th></tr></thead>
+          <tbody id="recentRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ITEMS -->
+    <div id="sec-items" class="sec" style="display:none">
+      <h2 style="margin-bottom:20px">Item Yonetimi</h2>
+      <div class="search-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="itemSearch" placeholder="Item ara..." oninput="filterItems()">
+      </div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>Tum Itemlar (<span id="itemCount">0</span>)</h3>
+          <button class="btn btn-danger btn-sm" onclick="bulkDeleteItems()">Secilenleri Sil</button>
+        </div>
+        <table>
+          <thead><tr><th><input type="checkbox" id="selectAllItems" onchange="toggleAllItems()"></th><th>Item</th><th>Level</th><th>Sunucu</th><th>Tip</th><th>En Son Fiyat</th><th>Kayit Sayisi</th><th>Islem</th></tr></thead>
+          <tbody id="itemRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PRICES -->
+    <div id="sec-prices" class="sec" style="display:none">
+      <h2 style="margin-bottom:20px">Fiyat Kontrolu</h2>
+      <div class="stats-grid" style="grid-template-columns:1fr 1fr">
+        <div class="stat-card">
+          <h3 style="margin-bottom:16px;font-size:14px">Manuel Fiyat Ekle</h3>
+          <div class="form-group"><label>Item Adi</label><input class="form-input" id="addPriceItem" placeholder="Orn: Raptor"></div>
+          <div class="form-row">
+            <div class="form-group" style="flex:1"><label>Level</label><select class="form-input" id="addPriceLvl"><option value="">Temel</option><option value="+1">+1</option><option value="+2">+2</option><option value="+3">+3</option><option value="+4">+4</option><option value="+5">+5</option><option value="+6">+6</option><option value="+7">+7</option><option value="+8">+8</option><option value="+9">+9</option><option value="+10">+10</option></select></div>
+            <div class="form-group" style="flex:1"><label>Fiyat</label><input class="form-input" id="addPriceAmount" type="number" placeholder="0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex:1"><label>Tip</label><select class="form-input" id="addPriceType"><option value="sell">SELL</option><option value="buy">BUY</option></select></div>
+            <div class="form-group" style="flex:1"><label>Sunucu</label><select class="form-input" id="addPriceServer"></select></div>
+          </div>
+          <div class="form-group"><label>Satisci (UserID)</label><input class="form-input" id="addPriceSeller" placeholder="Opsiyonel"></div>
+          <button class="btn btn-success" onclick="addManualPrice()">Fiyat Ekle</button>
+        </div>
+        <div class="stat-card">
+          <h3 style="margin-bottom:16px;font-size:14px">Toplu Fiyat Silme</h3>
+          <div class="form-group"><label>Item Adi</label><input class="form-input" id="bulkDelItem" placeholder="Item adi yazin"></div>
+          <div class="form-row">
+            <div class="form-group" style="flex:1"><label>Baslangic Tarihi</label><input class="form-input" id="bulkDelStart" type="date"></div>
+            <div class="form-group" style="flex:1"><label>Bitis Tarihi</label><input class="form-input" id="bulkDelEnd" type="date"></div>
+          </div>
+          <div class="form-group"><label>Sunucu</label><select class="form-input" id="bulkDelServer"><option value="">Tumu</option></select></div>
+          <button class="btn btn-danger" onclick="bulkDeletePrices()">Fiyatlari Sil</button>
+        </div>
+      </div>
+      <div class="table-wrap" style="margin-top:16px">
+        <div class="table-header"><h3>Fiyat Gecmisi</h3></div>
+        <table>
+          <thead><tr><th>ID</th><th>Item</th><th>Lvl</th><th>Fiyat</th><th>Tip</th><th>Sunucu</th><th>Satisci</th><th>Zaman</th><th>Islem</th></tr></thead>
+          <tbody id="priceRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SELLERS -->
+    <div id="sec-sellers" class="sec" style="display:none">
+      <h2 style="margin-bottom:20px">Seller Izleme</h2>
+      <div class="search-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="sellerSearch" placeholder="Satisci ara..." oninput="filterSellers()">
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><h3>Satisci Listesi</h3></div>
+        <table>
+          <thead><tr><th>Satisci ID</th><th>Toplam Kayit</th><th>Unique Item</th><th>En Son</th><th>Islem</th></tr></thead>
+          <tbody id="sellerRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SCAN -->
+    <div id="sec-scan" class="sec" style="display:none">
+      <h2 style="margin-bottom:20px">Tarama Kontrolu</h2>
+      <div class="stats-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="stat-card">
+          <div class="label">Durum</div>
+          <div class="value" id="scanStatus" style="font-size:16px">Durdu</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Son Tarama</div>
+          <div class="value" id="scanLastTime" style="font-size:14px">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Toplam Tarama</div>
+          <div class="value accent" id="scanTotalCount">0</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:20px">
+        <button class="btn btn-success" onclick="startScan()">Taramayi Baslat</button>
+        <button class="btn btn-danger" onclick="stopScan()">Durdur</button>
+        <button class="btn btn-ghost" onclick="refreshScanStatus()">Yenile</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><h3>Tarama Loglari</h3></div>
+        <div class="log-box" id="scanLogs">Log yok...</div>
+      </div>
+    </div>
+
+    <!-- CLEANUP -->
+    <div id="sec-cleanup" class="sec" style="display:none">
+      <h2 style="margin-bottom:20px">Veri Temizligi</h2>
+      <div class="stats-grid" style="grid-template-columns:1fr 1fr">
+        <div class="stat-card">
+          <h3 style="margin-bottom:16px;font-size:14px">Tekrarlanan Kayitlari Temizle</h3>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Ayni satisci+item+level icin en ucuz fiyati korur, digerlerini siler.</p>
+          <button class="btn btn-warn" onclick="cleanupDuplicates()">Temizle</button>
+        </div>
+        <div class="stat-card">
+          <h3 style="margin-bottom:16px;font-size:14px">Eski Kayitlari Sil</h3>
+          <div class="form-group"><label>Gunu gecmis kayitlar (gun)</label><input class="form-input" id="cleanupDays" type="number" value="30"></div>
+          <button class="btn btn-danger" onclick="cleanupOldRecords()">Eski Kayitlari Sil</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BACKUP -->
+    <div id="sec-backup" class="sec" style="display:none">
+      <h2 style="margin-bottom:20px">DB Yedekleme</h2>
+      <div class="stats-grid" style="grid-template-columns:1fr 1fr">
+        <div class="stat-card">
+          <h3 style="margin-bottom:16px;font-size:14px">Manuel Yedekleme</h3>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Veritabaninin anlik yedegini alir.</p>
+          <button class="btn btn-primary" onclick="createBackup()">Yedek Olustur</button>
+        </div>
+        <div class="stat-card">
+          <h3 style="margin-bottom:16px;font-size:14px">Mevcut Yedekler</h3>
+          <div id="backupList" style="font-size:12px;color:var(--text2)">Yukleniyor...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGS -->
+    <div id="sec-logs" class="sec" style="display:none">
+      <h2 style="margin-bottom:20px">Sistem Loglari</h2>
+      <div class="log-box" id="systemLogs" style="max-height:600px">Log yok...</div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="sec-settings" class="sec" style="display:none">
+      <h2 style="margin-bottom:20px">Ayarlar</h2>
+      <div class="stat-card" style="max-width:500px">
+        <div class="form-group"><label>API Key</label><input class="form-input" id="settingApiKey" type="password" placeholder="usk_xxxxxxxxxxxx"></div>
+        <div class="form-group"><label>DB Yolu</label><input class="form-input" id="settingDbPath" value="market_history.db" disabled></div>
+        <div class="form-group"><label>Otomatik Tarama (dakika)</label><input class="form-input" id="settingAutoScan" type="number" value="60"></div>
+        <button class="btn btn-success" onclick="saveSettings()">Kaydet</button>
+      </div>
+
+      <h3 style="margin:30px 0 16px;color:#e94560">Guvenlik Ayarlari</h3>
+      <div class="stat-card" style="max-width:500px">
+        <div class="form-group" style="display:flex;align-items:center;gap:12px">
+          <label style="margin:0">IP Whitelist Aktif</label>
+          <input type="checkbox" id="settingIpWhitelist" style="width:20px;height:20px;accent-color:#e94560">
+          <span style="color:#666;font-size:12px;margin-left:4px">(Aktifken sadece listedeki IP'ler girebilir)</span>
+        </div>
+        <div class="form-group">
+          <label>IP Whitelist (satir satir)</label>
+          <textarea class="form-input" id="settingIpList" rows="4" placeholder="192.168.1.1&#10;10.0.0.1" style="font-family:monospace;font-size:13px"></textarea>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:12px">
+          <label style="margin:0">Kayit Sistemi Aktif</label>
+          <input type="checkbox" id="settingRegistration" style="width:20px;height:20px;accent-color:#e94560">
+          <span style="color:#666;font-size:12px;margin-left:4px">(Aciksa herkes kayit olabilir)</span>
+        </div>
+        <div class="form-group"><label>Maks Giris Denemesi</label><input class="form-input" id="settingMaxAttempts" type="number" value="5" min="1" max="100"></div>
+        <div class="form-group"><label>Kilitlenme Suresi (dakika)</label><input class="form-input" id="settingLockout" type="number" value="15" min="1" max="1440"></div>
+        <button class="btn btn-success" onclick="saveSecurity()">Guvenlik Ayarlarini Kaydet</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3>Silme Onayi</h3>
+    <p id="deleteModalText" style="font-size:13px;color:var(--text2);margin-bottom:16px">Bu kaydi silmek istediginize emin misiniz?</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Iptal</button>
+      <button class="btn btn-danger" id="deleteModalConfirm">Sil</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+
+// NAVIGATION
+function showSection(name) {
+  document.querySelectorAll('.sec').forEach(s => s.style.display = 'none');
+  document.getElementById('sec-' + name).style.display = 'block';
+  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+  document.querySelector(`.sidebar a[href="#${name}"]`)?.classList.add('active');
+
+  if (name === 'overview') loadOverview();
+  if (name === 'items') loadItems();
+  if (name === 'prices') loadPrices();
+  if (name === 'sellers') loadSellers();
+  if (name === 'scan') loadScanStatus();
+  if (name === 'logs') loadLogs();
+  if (name === 'backup') loadBackups();
+}
+
+// TOAST
+function toast(msg, error = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (error ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// MODAL
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// OVERVIEW
+async function loadOverview() {
+  try {
+    const r = await fetch(API + '/api/admin/stats');
+    const d = await r.json();
+    document.getElementById('statTotal').textContent = d.total_rows?.toLocaleString() || 0;
+    document.getElementById('statItems').textContent = d.unique_items || 0;
+    document.getElementById('statSellers').textContent = d.unique_sellers || 0;
+    document.getElementById('statServers').textContent = d.unique_servers || 0;
+    document.getElementById('statToday').textContent = d.today_inserts || 0;
+    document.getElementById('statLastScan').textContent = d.last_scan || '-';
+  } catch(e) { console.error(e); }
+
+  try {
+    const r = await fetch(API + '/api/admin/recent?limit=20');
+    const rows = await r.json();
+    const tb = document.getElementById('recentRows');
+    tb.innerHTML = rows.map(r => `<tr>
+      <td>${r.timestamp || '-'}</td><td>${r.item_name}</td><td>${r.item_lvl || 'Temel'}</td>
+      <td>${(r.price||0).toLocaleString()}</td><td><span class="badge ${r.type}">${(r.type||'').toUpperCase()}</span></td>
+      <td>${r.server}</td><td>${r.seller || '-'}</td>
+    </tr>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+// ITEMS
+let allItems = [];
+async function loadItems() {
+  try {
+    const r = await fetch(API + '/api/admin/items');
+    allItems = await r.json();
+    document.getElementById('itemCount').textContent = allItems.length;
+    renderItems(allItems);
+  } catch(e) { console.error(e); }
+}
+function renderItems(items) {
+  document.getElementById('itemRows').innerHTML = items.map(i => `<tr>
+    <td><input type="checkbox" class="item-check" data-id="${i.id}"></td>
+    <td>${i.item_name}</td><td>${i.item_lvl || 'Temel'}</td><td>${i.server}</td>
+    <td><span class="badge ${i.type}">${(i.type||'').toUpperCase()}</span></td>
+    <td>${(i.price||0).toLocaleString()}</td><td>${i.count || 1}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteItem(${i.id})">Sil</button></td>
+  </tr>`).join('');
+}
+function filterItems() {
+  const q = document.getElementById('itemSearch').value.toLowerCase();
+  renderItems(allItems.filter(i => (i.item_name||'').toLowerCase().includes(q)));
+}
+function toggleAllItems() {
+  const c = document.getElementById('selectAllItems').checked;
+  document.querySelectorAll('.item-check').forEach(cb => cb.checked = c);
+}
+async function deleteItem(id) {
+  openModal('deleteModal');
+  document.getElementById('deleteModalConfirm').onclick = async () => {
+    await fetch(API + '/api/admin/items/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})});
+    closeModal('deleteModal'); toast('Item silindi'); loadItems();
+  };
+}
+async function bulkDeleteItems() {
+  const ids = [...document.querySelectorAll('.item-check:checked')].map(cb => parseInt(cb.dataset.id));
+  if (!ids.length) return toast('Secili item yok', true);
+  openModal('deleteModal');
+  document.getElementById('deleteModalText').textContent = `${ids.length} kaydi silmek istediginize emin misiniz?`;
+  document.getElementById('deleteModalConfirm').onclick = async () => {
+    await fetch(API + '/api/admin/items/bulk-delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ids})});
+    closeModal('deleteModal'); toast(`${ids.length} kayit silindi`); loadItems();
+  };
+}
+
+// PRICES
+async function loadPrices() {
+  try {
+    const r = await fetch(API + '/api/admin/prices?limit=100');
+    const rows = await r.json();
+    document.getElementById('priceRows').innerHTML = rows.map(r => `<tr>
+      <td>${r.id}</td><td>${r.item_name}</td><td>${r.item_lvl || 'Temel'}</td>
+      <td>${(r.price||0).toLocaleString()}</td><td><span class="badge ${r.type}">${(r.type||'').toUpperCase()}</span></td>
+      <td>${r.server}</td><td>${r.seller || '-'}</td><td>${r.timestamp || '-'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deletePrice(${r.id})">Sil</button></td>
+    </tr>`).join('');
+  } catch(e) { console.error(e); }
+
+  // Server dropdowns
+  try {
+    const r = await fetch(API + '/api/servers');
+    const servers = await r.json();
+    const opts = servers.map(s => `<option value="${s}">${s}</option>`).join('');
+    document.getElementById('addPriceServer').innerHTML = opts;
+    document.getElementById('bulkDelServer').innerHTML = '<option value="">Tumu</option>' + opts;
+  } catch(e) {}
+}
+async function addManualPrice() {
+  const data = {
+    item_name: document.getElementById('addPriceItem').value,
+    item_lvl: document.getElementById('addPriceLvl').value,
+    price: parseInt(document.getElementById('addPriceAmount').value) || 0,
+    type: document.getElementById('addPriceType').value,
+    server: document.getElementById('addPriceServer').value,
+    seller: document.getElementById('addPriceSeller').value
+  };
+  if (!data.item_name || !data.price) return toast('Item ve fiyat gerekli', true);
+  await fetch(API + '/api/admin/prices/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  toast('Fiyat eklendi'); loadPrices();
+}
+async function deletePrice(id) {
+  await fetch(API + '/api/admin/prices/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})});
+  toast('Fiyat silindi'); loadPrices();
+}
+async function bulkDeletePrices() {
+  const data = {
+    item_name: document.getElementById('bulkDelItem').value,
+    start_date: document.getElementById('bulkDelStart').value,
+    end_date: document.getElementById('bulkDelEnd').value,
+    server: document.getElementById('bulkDelServer').value
+  };
+  if (!data.item_name) return toast('Item adi gerekli', true);
+  const r = await fetch(API + '/api/admin/prices/bulk-delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  const d = await r.json();
+  toast(`${d.deleted || 0} kayit silindi`); loadPrices();
+}
+
+// SELLERS
+let allSellers = [];
+async function loadSellers() {
+  try {
+    const r = await fetch(API + '/api/admin/sellers');
+    allSellers = await r.json();
+    renderSellers(allSellers);
+  } catch(e) { console.error(e); }
+}
+function renderSellers(sellers) {
+  document.getElementById('sellerRows').innerHTML = sellers.map(s => `<tr>
+    <td>${s.seller || 'Bilinmiyor'}</td><td>${s.total_count}</td><td>${s.unique_items}</td>
+    <td>${s.last_seen || '-'}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteSeller('${s.seller}')">Sil</button></td>
+  </tr>`).join('');
+}
+function filterSellers() {
+  const q = document.getElementById('sellerSearch').value.toLowerCase();
+  renderSellers(allSellers.filter(s => (s.seller||'').toLowerCase().includes(q)));
+}
+async function deleteSeller(seller) {
+  openModal('deleteModal');
+  document.getElementById('deleteModalText').textContent = `"${seller}" tum kayitlarini silmek istediginize emin misiniz?`;
+  document.getElementById('deleteModalConfirm').onclick = async () => {
+    await fetch(API + '/api/admin/sellers/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({seller})});
+    closeModal('deleteModal'); toast('Satisci kayitlari silindi'); loadSellers();
+  };
+}
+
+// SCAN
+async function loadScanStatus() { refreshScanStatus(); }
+async function refreshScanStatus() {
+  try {
+    const r = await fetch(API + '/api/admin/scan/status');
+    const d = await r.json();
+    document.getElementById('scanStatus').textContent = d.running ? 'Taranıyor' : 'Durdu';
+    document.getElementById('scanStatus').style.color = d.running ? 'var(--accent2)' : 'var(--danger)';
+    document.getElementById('scanLastTime').textContent = d.last_scan || '-';
+    document.getElementById('scanTotalCount').textContent = d.total_scans || 0;
+    if (d.logs) document.getElementById('scanLogs').innerHTML = d.logs.join('<br>');
+  } catch(e) {}
+}
+async function startScan() {
+  await fetch(API + '/api/admin/scan/start', {method:'POST'});
+  toast('Tarama baslatildi'); refreshScanStatus();
+}
+async function stopScan() {
+  await fetch(API + '/api/admin/scan/stop', {method:'POST'});
+  toast('Tarama durduruldu'); refreshScanStatus();
+}
+
+// CLEANUP
+async function cleanupDuplicates() {
+  const r = await fetch(API + '/api/admin/cleanup/duplicates', {method:'POST'});
+  const d = await r.json();
+  toast(`${d.deleted || 0} tekrarlanan kayit silindi`);
+}
+async function cleanupOldRecords() {
+  const days = document.getElementById('cleanupDays').value;
+  const r = await fetch(API + '/api/admin/cleanup/old', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days})});
+  const d = await r.json();
+  toast(`${d.deleted || 0} eski kayit silindi`);
+}
+
+// BACKUP
+async function createBackup() {
+  const r = await fetch(API + '/api/admin/backup', {method:'POST'});
+  const d = await r.json();
+  toast(d.message || 'Yedek olusturuldu'); loadBackups();
+}
+async function loadBackups() {
+  try {
+    const r = await fetch(API + '/api/admin/backups');
+    const files = await r.json();
+    document.getElementById('backupList').innerHTML = files.length
+      ? files.map(f => `<div style="padding:6px 0;border-bottom:1px solid var(--border)">${f.name} <span style="color:var(--accent)">${f.size}</span></div>`).join('')
+      : 'Yedek yok';
+  } catch(e) {}
+}
+
+// LOGS
+async function loadLogs() {
+  try {
+    const r = await fetch(API + '/api/admin/logs');
+    const d = await r.json();
+    document.getElementById('systemLogs').innerHTML = d.logs?.join('<br>') || 'Log yok';
+  } catch(e) {}
+}
+
+// SETTINGS
+async function loadSettings() {
+  try {
+    const r = await fetch(API + '/api/admin/settings');
+    const d = await r.json();
+    document.getElementById('settingApiKey').value = d.api_key || '';
+    document.getElementById('settingAutoScan').value = d.auto_scan_minutes || 60;
+    document.getElementById('settingIpWhitelist').checked = d.ip_whitelist_enabled || false;
+    document.getElementById('settingIpList').value = (d.ip_whitelist || []).join('\n');
+    document.getElementById('settingRegistration').checked = d.registration_enabled || false;
+    document.getElementById('settingMaxAttempts').value = d.max_login_attempts || 5;
+    document.getElementById('settingLockout').value = d.lockout_minutes || 15;
+  } catch(e) {}
+}
+async function saveSettings() {
+  const data = {
+    api_key: document.getElementById('settingApiKey').value,
+    auto_scan_minutes: parseInt(document.getElementById('settingAutoScan').value) || 60
+  };
+  await fetch(API + '/api/admin/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  toast('Ayarlar kaydedildi');
+}
+async function saveSecurity() {
+  const ipText = document.getElementById('settingIpList').value;
+  const ips = ipText.split('\n').map(s => s.trim()).filter(s => s && /^\d+\.\d+\.\d+\.\d+$/.test(s));
+  const data = {
+    ip_whitelist_enabled: document.getElementById('settingIpWhitelist').checked,
+    ip_whitelist: ips,
+    registration_enabled: document.getElementById('settingRegistration').checked,
+    max_login_attempts: parseInt(document.getElementById('settingMaxAttempts').value) || 5,
+    lockout_minutes: parseInt(document.getElementById('settingLockout').value) || 15
+  };
+  const r = await fetch(API + '/api/admin/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  if (r.ok) toast('Guvenlik ayarlari kaydedildi');
+  else toast('Hata olustu', true);
+}
+
+// INIT
+loadOverview();
+loadSettings();
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Item - Market Master</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:#0b0b17;color:#d1d4dc;min-height:100vh}
+.top{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:50px;background:#0d0d1a;border-bottom:1px solid #1a1a2e}
+.logo{font-size:15px;font-weight:800;color:#e94560;text-decoration:none;letter-spacing:1.5px}
+.nav{display:flex;gap:4px}
+.nav a{padding:6px 14px;border-radius:6px;color:#888;text-decoration:none;font-size:13px;font-weight:500;transition:all .15s}
+.nav a:hover{color:#d1d4dc;background:rgba(255,255,255,.05)}
+.nav a.active{color:#fff;background:rgba(233,69,96,.15)}
+.container{max-width:900px;margin:30px auto;padding:0 20px}
+h1{font-size:22px;color:#fff;margin-bottom:6px}
+.sub{color:#666;font-size:13px;margin-bottom:24px}
+.search-box{position:relative}
+.search-box input{width:100%;padding:14px 20px;border-radius:10px;border:1px solid #2a2a3e;background:#111122;color:#fff;font-size:16px;outline:none;transition:border-color .2s}
+.search-box input:focus{border-color:#e94560}
+.search-box input::placeholder{color:#555}
+.results{margin-top:12px;display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow-y:auto}
+.result-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:8px;background:#111122;border:1px solid transparent;cursor:pointer;text-decoration:none;color:#d1d4dc;transition:all .15s}
+.result-item:hover{border-color:#e94560;background:#1a1a2e}
+.result-item .name{font-weight:600;font-size:14px}
+.result-item .arrow{color:#555;font-size:12px}
+.no-result{color:#555;text-align:center;padding:40px;font-size:14px}
+.count{color:#555;font-size:12px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="logo" href="/">MARKET MASTER</a>
+  <div class="nav">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/item" class="active">Item</a>
+    <a href="/endeks">Endeks</a>
+  </div>
+</div>
+
+<div class="container">
+  <h1>Item Analiz</h1>
+  <div class="sub">Item adini yazin ve analiz sayfasina gidin</div>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Item adi yazin..." autocomplete="off" autofocus>
+  </div>
+  <div class="count" id="count"></div>
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+const ALL_ITEMS = {{ all_items|tojson }};
+const input = document.getElementById('searchInput');
+const resultsEl = document.getElementById('results');
+const countEl = document.getElementById('count');
+
+function render(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) { resultsEl.innerHTML = ''; countEl.textContent = ''; return; }
+  const matches = ALL_ITEMS.filter(n => n.toLowerCase().includes(q)).slice(0, 50);
+  countEl.textContent = matches.length + ' item bulundu';
+  if (!matches.length) { resultsEl.innerHTML = '<div class="no-result">Sonuc bulunamadi</div>'; return; }
+  resultsEl.innerHTML = matches.map(n =>
+    '<a class="result-item" href="/item/' + encodeURIComponent(n) + '">' +
+    '<span class="name">' + n + '</span><span class="arrow">&#9654;</span></a>'
+  ).join('');
+}
+
+input.addEventListener('input', function() { render(this.value); });
+input.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    const q = this.value.trim().toLowerCase();
+    const match = ALL_ITEMS.find(n => n.toLowerCase() === q);
+    if (match) window.location.href = '/item/' + encodeURIComponent(match);
+    else { const first = ALL_ITEMS.filter(n => n.toLowerCase().includes(q))[0]; if (first) window.location.href = '/item/' + encodeURIComponent(first); }
+  }
+});
+</script>
+</body>
+</html>

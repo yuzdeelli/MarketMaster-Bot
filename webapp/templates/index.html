@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Master</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+</head>
+<body>
+
+    <!-- SVG Definitions for 3D Realistic Icons -->
+    <svg style="position:absolute;width:0;height:0;overflow:hidden">
+        <defs>
+            <!-- METALLIC BLADE GRADIENT -->
+            <linearGradient id="bladeGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#e8e8e8"/>
+                <stop offset="30%" stop-color="#b0b0b0"/>
+                <stop offset="50%" stop-color="#ffffff"/>
+                <stop offset="70%" stop-color="#909090"/>
+                <stop offset="100%" stop-color="#606060"/>
+            </linearGradient>
+            <linearGradient id="bladeGrad2" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#d0d0d0"/>
+                <stop offset="50%" stop-color="#f5f5f5"/>
+                <stop offset="100%" stop-color="#808080"/>
+            </linearGradient>
+            <!-- GOLD GRADIENT -->
+            <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffd700"/>
+                <stop offset="30%" stop-color="#ffed4a"/>
+                <stop offset="60%" stop-color="#daa520"/>
+                <stop offset="100%" stop-color="#b8860b"/>
+            </linearGradient>
+            <!-- DARK METAL -->
+            <linearGradient id="darkMetal" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#555"/>
+                <stop offset="50%" stop-color="#333"/>
+                <stop offset="100%" stop-color="#1a1a1a"/>
+            </linearGradient>
+            <!-- BOMB BODY -->
+            <radialGradient id="bombGrad" cx="40%" cy="35%">
+                <stop offset="0%" stop-color="#555"/>
+                <stop offset="60%" stop-color="#222"/>
+                <stop offset="100%" stop-color="#0a0a0a"/>
+            </radialGradient>
+            <!-- OIL BARREL -->
+            <linearGradient id="oilGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#1a5276"/>
+                <stop offset="50%" stop-color="#0e2f44"/>
+                <stop offset="100%" stop-color="#0a1929"/>
+            </linearGradient>
+            <!-- FIRE -->
+            <radialGradient id="fireGrad" cx="50%" cy="70%">
+                <stop offset="0%" stop-color="#fff7a0"/>
+                <stop offset="30%" stop-color="#ffaa00"/>
+                <stop offset="60%" stop-color="#ff4400"/>
+                <stop offset="100%" stop-color="#cc0000"/>
+            </radialGradient>
+            <!-- ROCKET BODY -->
+            <linearGradient id="rocketGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#e0e0e0"/>
+                <stop offset="30%" stop-color="#b0b0b0"/>
+                <stop offset="70%" stop-color="#707070"/>
+                <stop offset="100%" stop-color="#404040"/>
+            </linearGradient>
+            <!-- PLANE BODY -->
+            <linearGradient id="planeGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#c0c8d0"/>
+                <stop offset="40%" stop-color="#8899aa"/>
+                <stop offset="100%" stop-color="#506070"/>
+            </linearGradient>
+            <!-- SHIP HULL -->
+            <linearGradient id="shipGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#4a5568"/>
+                <stop offset="100%" stop-color="#1a202c"/>
+            </linearGradient>
+            <!-- WATER -->
+            <linearGradient id="waterGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#006994"/>
+                <stop offset="100%" stop-color="#00334d"/>
+            </linearGradient>
+            <!-- CHIP -->
+            <linearGradient id="chipGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#1a472a"/>
+                <stop offset="50%" stop-color="#0d2818"/>
+                <stop offset="100%" stop-color="#0a1f14"/>
+            </linearGradient>
+            <!-- GLOW FILTERS -->
+            <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="shadow3d"><feDropShadow dx="2" dy="3" stdDeviation="2" flood-opacity="0.5"/></filter>
+            <filter id="metalShine"><feSpecularLighting surfaceScale="3" specularConstant="1.2" specularExponent="20" result="spec"><fePointLight x="-50" y="-50" z="100"/></feSpecularLighting><feComposite in="SourceGraphic" in2="spec" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/></filter>
+        </defs>
+    </svg>
+
+    <!-- Stars -->
+    <div class="stars" id="stars"></div>
+    <div class="particles" id="particles"></div>
+
+    <div class="globe-scene">
+
+        <!-- Orbiting Text -->
+        <div class="orbit-ring">
+            <div class="orbit-text" id="orbitText"></div>
+        </div>
+
+        <!-- Globe -->
+        <div class="globe-container">
+            <div class="globe">
+                <div class="globe-surface"></div>
+                <div class="globe-grid"></div>
+                <div class="globe-atmosphere"></div>
+            </div>
+
+            <!-- 3D Icons orbiting ON globe -->
+            <div class="globe-icons">
+                <!-- Sword -->
+                <div class="g-icon3d" style="--delay:0s;--dur:10s;--start:0deg;--r:130px">
+                    <svg width="50" height="50" viewBox="0 0 100 100" filter="url(#shadow3d)">
+                        <line x1="20" y1="80" x2="75" y2="25" stroke="url(#bladeGrad)" stroke-width="5" stroke-linecap="round"/>
+                        <line x1="22" y1="78" x2="73" y2="27" stroke="#fff" stroke-width="1" opacity="0.4"/>
+                        <rect x="12" y="70" width="20" height="6" rx="2" fill="url(#goldGrad)" transform="rotate(-45 22 73)"/>
+                        <circle cx="18" cy="76" r="4" fill="url(#goldGrad)"/>
+                        <polygon points="73,27 80,20 85,25 78,32" fill="url(#bladeGrad2)"/>
+                    </svg>
+                </div>
+                <!-- Bomb -->
+                <div class="g-icon3d" style="--delay:1.5s;--dur:9s;--start:72deg;--r:130px">
+                    <svg width="48" height="48" viewBox="0 0 100 100" filter="url(#shadow3d)">
+                        <circle cx="48" cy="55" r="30" fill="url(#bombGrad)"/>
+                        <ellipse cx="40" cy="42" rx="10" ry="8" fill="#444" opacity="0.5"/>
+                        <circle cx="38" cy="40" r="4" fill="#666"/>
+                        <path d="M62 30 Q70 15 65 10" stroke="#888" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <circle cx="66" cy="8" r="5" fill="#ff6600" filter="url(#glow)"/>
+                        <circle cx="66" cy="8" r="3" fill="#ffaa00"/>
+                        <circle cx="66" cy="8" r="1.5" fill="#fff"/>
+                    </svg>
+                </div>
+                <!-- Horse -->
+                <div class="g-icon3d" style="--delay:0.8s;--dur:11s;--start:144deg;--r:130px">
+                    <svg width="52" height="52" viewBox="0 0 100 100" filter="url(#shadow3d)">
+                        <path d="M30 75 L35 55 L32 40 L38 30 L42 25 L48 28 L52 22 L55 18 L58 22 L56 28 L62 32 L68 35 L75 42 L78 55 L80 65 L75 75 L65 78 L55 76 L45 78 L35 77Z" fill="#2a1810" stroke="#1a0f08" stroke-width="1"/>
+                        <path d="M55 18 L58 12 L62 15 L58 22Z" fill="#2a1810"/>
+                        <path d="M75 75 L82 82 L85 90 L78 88 L72 80Z" fill="#2a1810"/>
+                        <path d="M35 77 L28 85 L25 92 L32 90 L38 82Z" fill="#2a1810"/>
+                        <ellipse cx="56" cy="25" rx="1.5" ry="1.5" fill="#ff4444"/>
+                        <path d="M38 30 L35 28" stroke="#1a0f08" stroke-width="2"/>
+                    </svg>
+                </div>
+                <!-- Missile -->
+                <div class="g-icon3d" style="--delay:2s;--dur:8s;--start:216deg;--r:130px">
+                    <svg width="46" height="46" viewBox="0 0 100 100" filter="url(#shadow3d)">
+                        <path d="M50 10 L42 40 L40 70 L38 80 L50 85 L62 80 L60 70 L58 40Z" fill="url(#rocketGrad)"/>
+                        <path d="M50 10 L47 25 L50 30 L53 25Z" fill="#cc0000"/>
+                        <ellipse cx="50" cy="35" rx="4" ry="4" fill="#333"/>
+                        <path d="M38 65 L30 80 L38 75Z" fill="#e0e0e0"/>
+                        <path d="M62 65 L70 80 L62 75Z" fill="#e0e0e0"/>
+                        <path d="M44 82 L50 95 L56 82" fill="none" stroke="#ff6600" stroke-width="3" opacity="0.8"/>
+                        <path d="M46 85 L50 92 L54 85" fill="#ffaa00" opacity="0.6"/>
+                    </svg>
+                </div>
+                <!-- Plane -->
+                <div class="g-icon3d" style="--delay:0.5s;--dur:12s;--start:288deg;--r:130px">
+                    <svg width="54" height="54" viewBox="0 0 100 100" filter="url(#shadow3d)">
+                        <path d="M50 20 L45 45 L20 60 L18 64 L45 58 L42 75 L30 85 L32 88 L48 78 L50 90 L52 78 L68 88 L70 85 L58 75 L55 58 L82 64 L80 60 L55 45Z" fill="url(#planeGrad)"/>
+                        <path d="M50 20 L48 35 L50 40 L52 35Z" fill="#8899aa"/>
+                        <circle cx="50" cy="48" r="3" fill="#4fc3f7"/>
+                        <path d="M45 45 L42 48" stroke="#506070" stroke-width="1"/>
+                        <path d="M55 45 L58 48" stroke="#506070" stroke-width="1"/>
+                    </svg>
+                </div>
+                <!-- Fire -->
+                <div class="g-icon3d" style="--delay:1.2s;--dur:7s;--start:360deg;--r:130px">
+                    <svg width="44" height="44" viewBox="0 0 100 100" filter="url(#glow)">
+                        <path d="M50 15 Q60 35 55 50 Q65 40 60 60 Q70 50 65 75 Q55 90 50 90 Q45 90 35 75 Q30 50 40 60 Q35 40 45 50 Q40 35 50 15Z" fill="url(#fireGrad)"/>
+                        <path d="M50 35 Q56 50 53 60 Q60 55 58 70 Q52 80 50 80 Q48 80 42 70 Q40 55 47 60 Q44 50 50 35Z" fill="#fff7a0" opacity="0.6"/>
+                        <path d="M50 50 Q53 60 52 68 Q50 75 50 75 Q50 75 48 68 Q47 60 50 50Z" fill="#fff" opacity="0.4"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outer Floating 3D Objects -->
+        <div class="float-icons">
+            <!-- Oil Barrel -->
+            <div class="f-3d" style="--x:-240px;--y:-170px;--delay:0s;--dur:7s">
+                <svg width="56" height="56" viewBox="0 0 100 100" filter="url(#shadow3d)">
+                    <ellipse cx="50" cy="25" rx="30" ry="10" fill="#2a5278"/>
+                    <rect x="20" y="25" width="60" height="55" fill="url(#oilGrad)"/>
+                    <ellipse cx="50" cy="80" rx="30" ry="10" fill="#0a1929"/>
+                    <rect x="20" y="38" width="60" height="4" fill="#1a5276" opacity="0.7"/>
+                    <rect x="20" y="60" width="60" height="4" fill="#1a5276" opacity="0.7"/>
+                    <ellipse cx="50" cy="25" rx="30" ry="10" fill="none" stroke="#3a7ab0" stroke-width="1"/>
+                    <text x="50" y="56" text-anchor="middle" fill="#4a9aca" font-size="12" font-weight="bold">OIL</text>
+                </svg>
+            </div>
+            <!-- Warship -->
+            <div class="f-3d" style="--x:220px;--y:-150px;--delay:1.2s;--dur:8s">
+                <svg width="64" height="50" viewBox="0 0 120 80" filter="url(#shadow3d)">
+                    <path d="M10 55 L25 45 L95 45 L115 55 L10 55Z" fill="url(#shipGrad)"/>
+                    <path d="M10 55 L5 65 L115 65 L115 55Z" fill="#1a202c"/>
+                    <rect x="40" y="30" width="40" height="15" rx="2" fill="#3a4558"/>
+                    <rect x="50" y="18" width="20" height="12" rx="1" fill="#4a5568"/>
+                    <rect x="56" y="10" width="8" height="8" rx="1" fill="#5a6578"/>
+                    <circle cx="60" cy="14" r="2" fill="#ef4444"/>
+                    <line x1="60" y1="10" x2="60" y2="2" stroke="#888" stroke-width="1.5"/>
+                    <rect x="25" y="42" width="4" height="5" fill="#555"/>
+                    <rect x="90" y="42" width="4" height="5" fill="#555"/>
+                    <path d="M0 65 Q30 72 60 70 Q90 68 120 65" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+                </svg>
+            </div>
+            <!-- Tech Chip -->
+            <div class="f-3d" style="--x:-270px;--y:70px;--delay:2s;--dur:6.5s">
+                <svg width="52" height="52" viewBox="0 0 100 100" filter="url(#shadow3d)">
+                    <rect x="20" y="20" width="60" height="60" rx="4" fill="url(#chipGrad)"/>
+                    <rect x="28" y="28" width="44" height="44" rx="2" fill="#0d2818" stroke="#1a5a2e" stroke-width="1"/>
+                    <!-- Pins -->
+                    <rect x="24" y="10" width="4" height="12" fill="#c0a030"/>
+                    <rect x="36" y="10" width="4" height="12" fill="#c0a030"/>
+                    <rect x="48" y="10" width="4" height="12" fill="#c0a030"/>
+                    <rect x="60" y="10" width="4" height="12" fill="#c0a030"/>
+                    <rect x="72" y="10" width="4" height="12" fill="#c0a030"/>
+                    <rect x="24" y="78" width="4" height="12" fill="#c0a030"/>
+                    <rect x="36" y="78" width="4" height="12" fill="#c0a030"/>
+                    <rect x="48" y="78" width="4" height="12" fill="#c0a030"/>
+                    <rect x="60" y="78" width="4" height="12" fill="#c0a030"/>
+                    <rect x="72" y="78" width="4" height="12" fill="#c0a030"/>
+                    <rect x="8" y="36" width="12" height="4" fill="#c0a030"/>
+                    <rect x="8" y="48" width="12" height="4" fill="#c0a030"/>
+                    <rect x="8" y="60" width="12" height="4" fill="#c0a030"/>
+                    <rect x="80" y="36" width="12" height="4" fill="#c0a030"/>
+                    <rect x="80" y="48" width="12" height="4" fill="#c0a030"/>
+                    <rect x="80" y="60" width="12" height="4" fill="#c0a030"/>
+                    <!-- Inner pattern -->
+                    <circle cx="50" cy="50" r="8" fill="none" stroke="#1a5a2e" stroke-width="1"/>
+                    <circle cx="50" cy="50" r="3" fill="#2ecc71" opacity="0.6"/>
+                    <line x1="35" y1="40" x2="50" y2="50" stroke="#1a5a2e" stroke-width="0.5"/>
+                    <line x1="65" y1="40" x2="50" y2="50" stroke="#1a5a2e" stroke-width="0.5"/>
+                    <line x1="35" y1="60" x2="50" y2="50" stroke="#1a5a2e" stroke-width="0.5"/>
+                    <line x1="65" y1="60" x2="50" y2="50" stroke="#1a5a2e" stroke-width="0.5"/>
+                </svg>
+            </div>
+            <!-- Nuke Radiation -->
+            <div class="f-3d" style="--x:250px;--y:90px;--delay:0.7s;--dur:7.5s">
+                <svg width="50" height="50" viewBox="0 0 100 100" filter="url(#glow)">
+                    <circle cx="50" cy="50" r="35" fill="none" stroke="#ff4400" stroke-width="3" opacity="0.8"/>
+                    <circle cx="50" cy="50" r="8" fill="#ff6600"/>
+                    <circle cx="50" cy="50" r="4" fill="#ffaa00"/>
+                    <path d="M50 15 A35 35 0 0 1 80 70 L50 50Z" fill="#ff4400" opacity="0.3"/>
+                    <path d="M80 70 A35 35 0 0 1 20 70 L50 50Z" fill="#ff4400" opacity="0.3"/>
+                    <path d="M20 70 A35 35 0 0 1 50 15 L50 50Z" fill="#ff4400" opacity="0.3"/>
+                </svg>
+            </div>
+            <!-- Coin Stack -->
+            <div class="f-3d" style="--x:-160px;--y:-230px;--delay:1.8s;--dur:6s">
+                <svg width="48" height="48" viewBox="0 0 100 100" filter="url(#shadow3d)">
+                    <ellipse cx="50" cy="30" rx="28" ry="10" fill="#ffd700"/>
+                    <ellipse cx="50" cy="40" rx="28" ry="10" fill="#daa520"/>
+                    <ellipse cx="50" cy="50" rx="28" ry="10" fill="#ffd700"/>
+                    <ellipse cx="50" cy="60" rx="28" ry="10" fill="#daa520"/>
+                    <ellipse cx="50" cy="70" rx="28" ry="10" fill="#b8860b"/>
+                    <rect x="22" y="30" width="56" height="40" fill="url(#goldGrad)" opacity="0.3"/>
+                    <text x="50" y="48" text-anchor="middle" fill="#8B6914" font-size="14" font-weight="bold">$</text>
+                </svg>
+            </div>
+            <!-- Crossed Swords -->
+            <div class="f-3d" style="--x:180px;--y:220px;--delay:2.5s;--dur:8s">
+                <svg width="52" height="52" viewBox="0 0 100 100" filter="url(#shadow3d)">
+                    <line x1="20" y1="80" x2="80" y2="20" stroke="url(#bladeGrad)" stroke-width="4" stroke-linecap="round"/>
+                    <line x1="22" y1="78" x2="78" y2="22" stroke="#fff" stroke-width="1" opacity="0.3"/>
+                    <line x1="80" y1="80" x2="20" y2="20" stroke="url(#bladeGrad)" stroke-width="4" stroke-linecap="round"/>
+                    <line x1="78" y1="78" x2="22" y2="22" stroke="#fff" stroke-width="1" opacity="0.3"/>
+                    <rect x="12" y="72" width="16" height="5" rx="2" fill="url(#goldGrad)" transform="rotate(-45 20 74)"/>
+                    <rect x="72" y="72" width="16" height="5" rx="2" fill="url(#goldGrad)" transform="rotate(45 80 74)"/>
+                </svg>
+            </div>
+            <!-- Storm/Tornado -->
+            <div class="f-3d" style="--x:-310px;--y:-50px;--delay:1.5s;--dur:9s">
+                <svg width="46" height="56" viewBox="0 0 80 100" filter="url(#glow)">
+                    <path d="M40 10 Q55 25 35 35 Q60 40 30 55 Q55 58 35 70 Q50 75 40 90" fill="none" stroke="#78b4d0" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+                    <path d="M35 15 Q50 28 33 38 Q55 42 32 57 Q50 62 37 72" fill="none" stroke="#a0d4f0" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+                </svg>
+            </div>
+            <!-- Waves -->
+            <div class="f-3d" style="--x:160px;--y:-240px;--delay:0.3s;--dur:5.5s">
+                <svg width="56" height="36" viewBox="0 0 100 60" filter="url(#glow)">
+                    <path d="M0 30 Q15 15 25 30 Q35 45 50 30 Q65 15 75 30 Q85 45 100 30" fill="none" stroke="#4fc3f7" stroke-width="4" stroke-linecap="round"/>
+                    <path d="M0 40 Q15 25 25 40 Q35 55 50 40 Q65 25 75 40 Q85 55 100 40" fill="none" stroke="#0288d1" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+                </svg>
+            </div>
+            <!-- Gun/Pistol -->
+            <div class="f-3d" style="--x:-320px;--y:180px;--delay:3s;--dur:7s">
+                <svg width="50" height="40" viewBox="0 0 100 80" filter="url(#shadow3d)">
+                    <path d="M15 30 L70 28 L75 25 L80 28 L80 35 L75 38 L70 35 L50 38 L50 55 L40 60 L35 55 L35 38 L15 40Z" fill="#333"/>
+                    <path d="M15 30 L70 28 L75 25 L80 28 L80 35 L75 38 L70 35 L50 38" fill="#555" stroke="#222" stroke-width="0.5"/>
+                    <rect x="20" y="32" width="45" height="2" rx="1" fill="#666" opacity="0.5"/>
+                    <circle cx="82" cy="31" r="1.5" fill="#888"/>
+                </svg>
+            </div>
+            <!-- Satellite -->
+            <div class="f-3d" style="--x:310px;--y:-40px;--delay:1.2s;--dur:6s">
+                <svg width="52" height="52" viewBox="0 0 100 100" filter="url(#shadow3d)">
+                    <rect x="40" y="40" width="20" height="20" rx="3" fill="#555"/>
+                    <rect x="44" y="44" width="12" height="12" rx="1" fill="#333"/>
+                    <rect x="47" y="47" width="6" height="6" fill="#4fc3f7" opacity="0.6"/>
+                    <rect x="10" y="42" width="30" height="16" rx="2" fill="#1a3a6e"/>
+                    <rect x="60" y="42" width="30" height="16" rx="2" fill="#1a3a6e"/>
+                    <line x1="15" y1="46" x2="35" y2="46" stroke="#2962FF" stroke-width="1" opacity="0.5"/>
+                    <line x1="15" y1="50" x2="35" y2="50" stroke="#2962FF" stroke-width="1" opacity="0.5"/>
+                    <line x1="15" y1="54" x2="35" y2="54" stroke="#2962FF" stroke-width="1" opacity="0.5"/>
+                    <line x1="65" y1="46" x2="85" y2="46" stroke="#2962FF" stroke-width="1" opacity="0.5"/>
+                    <line x1="65" y1="50" x2="85" y2="50" stroke="#2962FF" stroke-width="1" opacity="0.5"/>
+                    <line x1="65" y1="54" x2="85" y2="54" stroke="#2962FF" stroke-width="1" opacity="0.5"/>
+                </svg>
+            </div>
+            <!-- Shield -->
+            <div class="f-3d" style="--x:-100px;--y:270px;--delay:2.2s;--dur:8s">
+                <svg width="44" height="50" viewBox="0 0 80 100" filter="url(#shadow3d)">
+                    <path d="M40 10 L70 25 L68 65 L40 90 L12 65 L10 25Z" fill="#1a3a6e" stroke="#2962FF" stroke-width="2"/>
+                    <path d="M40 20 L60 30 L58 60 L40 78 L22 60 L20 30Z" fill="#0d1f3c" stroke="#1a3a6e" stroke-width="1"/>
+                    <path d="M40 30 L50 35 L48 55 L40 65 L32 55 L30 35Z" fill="#2962FF" opacity="0.3"/>
+                    <text x="40" y="52" text-anchor="middle" fill="#4fc3f7" font-size="18" font-weight="bold">M</text>
+                </svg>
+            </div>
+            <!-- Skull (danger) -->
+            <div class="f-3d" style="--x:100px;--y:260px;--delay:0.7s;--dur:6.5s">
+                <svg width="42" height="42" viewBox="0 0 100 100" filter="url(#glow)">
+                    <ellipse cx="50" cy="40" rx="30" ry="28" fill="#e0e0e0"/>
+                    <ellipse cx="50" cy="42" rx="28" ry="26" fill="#f5f5f5"/>
+                    <ellipse cx="38" cy="38" rx="8" ry="9" fill="#111"/>
+                    <ellipse cx="62" cy="38" rx="8" ry="9" fill="#111"/>
+                    <path d="M45 55 L48 62 L50 55 L52 62 L55 55" fill="none" stroke="#111" stroke-width="2"/>
+                    <rect x="35" y="65" width="5" height="12" rx="1" fill="#e0e0e0"/>
+                    <rect x="43" y="65" width="5" height="12" rx="1" fill="#e0e0e0"/>
+                    <rect x="51" y="65" width="5" height="12" rx="1" fill="#e0e0e0"/>
+                    <rect x="59" y="65" width="5" height="12" rx="1" fill="#e0e0e0"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Center Content -->
+        <div class="center-content">
+            <h1 class="hero-title">MARKET<span class="accent">MASTER</span></h1>
+            <p class="hero-sub">Pazar Analizi · Ticaret · Strateji</p>
+            <a href="/dashboard" class="cta-btn">Piyasalar'dan Çıkış</a>
+        </div>
+    </div>
+
+    <!-- Bottom Cards -->
+    <div class="bottom-cards">
+        <div class="info-card"><div class="card-dot dot-blue"></div><span class="card-label">Anlik Pazar</span></div>
+        <div class="info-card"><div class="card-dot dot-red"></div><span class="card-label">Savas Analizi</span></div>
+        <div class="info-card"><div class="card-dot dot-yellow"></div><span class="card-label">Kaynak Takibi</span></div>
+        <div class="info-card"><div class="card-dot dot-green"></div><span class="card-label">Teknoloji</span></div>
+    </div>
+
+    <script>
+    // Generate orbit text letters dynamically
+    const orbitEl = document.getElementById('orbitText');
+    const words = ['M','A','S','T','E','R','◆','M','A','R','K','E','T','◆'];
+    const allLetters = [...words, ...words];
+    allLetters.forEach((ch, i) => {
+        const span = document.createElement('span');
+        span.textContent = ch;
+        const angle = (360 / allLetters.length) * i;
+        span.style.transform = `rotate(${angle}deg) translate(250px) rotate(-${angle}deg)`;
+        if (ch === '◆') { span.className = 'orbit-dot'; span.style.fontSize = '10px'; }
+        orbitEl.appendChild(span);
+    });
+
+    // Stars
+    const starsEl = document.getElementById('stars');
+    for (let i = 0; i < 250; i++) {
+        const s = document.createElement('div');
+        s.className = 'star';
+        s.style.left = Math.random()*100+'%';
+        s.style.top = Math.random()*100+'%';
+        s.style.animationDelay = Math.random()*3+'s';
+        s.style.animationDuration = (2+Math.random()*3)+'s';
+        const sz = Math.random()*2.5+0.5;
+        s.style.width = sz+'px';
+        s.style.height = sz+'px';
+        if (Math.random() > 0.7) s.style.background = '#4fc3f7';
+        starsEl.appendChild(s);
+    }
+
+    // Particles
+    const pEl = document.getElementById('particles');
+    for (let i = 0; i < 25; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random()*100+'%';
+        p.style.animationDelay = Math.random()*15+'s';
+        p.style.animationDuration = (12+Math.random()*18)+'s';
+        p.style.opacity = Math.random()*0.25+0.05;
+        const sz = Math.random()*3+1;
+        p.style.width = sz+'px';
+        p.style.height = sz+'px';
+        pEl.appendChild(p);
+    }
+    </script>
+</body>
+</html>

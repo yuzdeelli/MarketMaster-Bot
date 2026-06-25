@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ item }} - Market Master</title>
+<script src="https://cdn.jsdelivr.net/npm/klinecharts@9/dist/umd/klinecharts.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Trebuchet MS",Roboto,Ubuntu,sans-serif;background-color:#f8f9fc;color:#131722}
+
+/* ---- NAVBAR ---- */
+.tv-navbar{display:flex;justify-content:space-between;align-items:center;height:56px;padding:0 24px;background-color:#fff;border-bottom:1px solid #e0e3eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;z-index:100;position:relative}
+.tv-navbar .nav-left,.tv-navbar .nav-right{display:flex;align-items:center;gap:16px}
+.tv-navbar .nav-center{flex:1;display:flex;justify-content:center;padding:0 20px}
+.tv-logo{font-weight:800;color:#131722;text-decoration:none;font-size:18px;letter-spacing:-0.5px}
+.tv-logo:hover{color:#2962FF}
+.server-select-box select{background:#f0f3fa;border:1px solid #e0e3eb;padding:6px 12px;border-radius:16px;font-weight:bold;color:#131722;cursor:pointer;font-size:13px;transition:all .2s}
+.server-select-box select:hover{border-color:#2962FF}
+.server-select-box select:focus{outline:none;border-color:#2962FF;box-shadow:0 0 0 2px rgba(41,98,255,.2)}
+.tv-search-wrapper{position:relative;width:220px}
+.tv-search-wrapper input{width:100%;background:#f0f3fa;border:1px solid transparent;padding:6px 10px 6px 32px;border-radius:6px;font-size:12px;color:#131722;transition:all .2s}
+.tv-search-wrapper input:focus{background:#fff;border-color:#2962FF;outline:none;box-shadow:0 0 0 2px rgba(41,98,255,.2)}
+.tv-search-wrapper .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#787b86;pointer-events:none}
+#searchDropdown{display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e3eb;border-radius:0 0 8px 8px;max-height:320px;overflow-y:auto;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+#searchDropdown.open{display:block}
+.sd-item{padding:9px 14px;cursor:pointer;color:#131722;font-size:13px;border-bottom:1px solid #f0f3fa}
+.sd-item:hover,.sd-item.active{background:#2962FF;color:#fff}
+.sd-item:last-child{border-bottom:none}
+.sd-hint{text-align:center;color:#787b86;font-size:11px;padding:12px}
+.btn-login-text{color:#131722;text-decoration:none;font-size:14px;font-weight:600;cursor:pointer;background:none;border:none;padding:0;transition:color .2s}
+.btn-login-text:hover{color:#2962FF}
+.btn-register-blue{background-color:#2962FF;color:#fff;padding:8px 16px;border-radius:20px;text-decoration:none;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .2s}
+.btn-register-blue:hover{background-color:#1a53ff}
+.btn-logout{color:#f23645;text-decoration:none;font-size:14px;font-weight:600;background:none;border:none;cursor:pointer;transition:color .2s}
+.btn-logout:hover{color:#e91e1e}
+.welcome-user{font-size:13px;color:#131722;font-weight:500}
+
+/* ---- SEARCH MODAL ---- */
+.search-backdrop{display:none;position:fixed;z-index:3000;left:0;top:0;width:100%;height:100%;background-color:rgba(0,0,0,.4);backdrop-filter:blur(4px);justify-content:center;padding-top:80px}
+.search-backdrop.active{display:flex}
+.search-modal-box{background:#fff;width:560px;max-height:420px;border-radius:8px;border:1px solid #e0e3eb;box-shadow:0 12px 36px rgba(0,0,0,.15);display:flex;flex-direction:column;overflow:hidden}
+.search-modal-header{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #e0e3eb;position:relative}
+#modalSearchInput{width:100%;border:none;font-size:16px;color:#131722;padding-left:28px;outline:none}
+.search-icon-modal{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#787b86;pointer-events:none}
+.esc-badge{background:#f0f3fa;border:1px solid #e0e3eb;color:#787b86;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold}
+.search-results-body{flex:1;overflow-y:auto;padding:8px 0}
+.search-placeholder-msg{text-align:center;color:#787b86;font-size:13px;padding:32px}
+.search-res-item{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;cursor:pointer;text-decoration:none;color:#131722;font-size:14px;transition:background .15s}
+.search-res-item:hover{background-color:#f0f3fa}
+
+/* ---- AD BANNER ---- */
+.ad-banner-wrap{display:flex;justify-content:center;padding:0 20px 8px;background:#fff;border-bottom:1px solid #e0e3eb}
+.ad-banner{display:block;max-width:728px;width:100%;border-radius:8px;overflow:hidden;opacity:.05;transition:opacity .3s;text-decoration:none}
+.ad-banner:hover{opacity:1}
+.ad-banner img{display:block;width:100%;height:auto}
+
+/* ---- TICKER BAR ---- */
+.tv-ticker-bar{display:flex;gap:12px;padding:10px 16px;background-color:#fff;border-bottom:1px solid #e0e3eb;overflow-x:auto;scrollbar-width:thin}
+.tv-ticker-bar::-webkit-scrollbar{height:4px}
+.tv-ticker-bar::-webkit-scrollbar-thumb{background:#d1d4dc;border-radius:2px}
+.tv-ticker-card{display:flex;align-items:center;gap:8px;background:#f0f3fa;padding:8px 16px;border-radius:24px;min-width:180px;border:1px solid #e0e3eb;cursor:pointer;transition:all .15s}
+.tv-ticker-card:hover{background:#e8ebf2;border-color:#c8ccd6}
+.ticker-badge{width:32px;height:32px;border-radius:50%;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;flex-shrink:0}
+.b-mdr{background:#e94560} .b-wb{background:#2962FF} .b-chr{background:#26a69a} .b-default{background:#848e9c}
+.ticker-info{display:flex;flex-direction:column}
+.ticker-name{font-size:11px;color:#787b86;font-weight:600}
+.ticker-price{font-size:13px;font-weight:bold;color:#131722}
+.ticker-price .pct{font-size:11px;margin-left:4px}
+.ticker-price.up{color:#26a69a} .ticker-price.up .pct{color:#26a69a}
+.ticker-price.down{color:#ef5350} .ticker-price.down .pct{color:#ef5350}
+.ticker-fear{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:0.3px;margin-top:1px;display:inline-block;width:fit-content}
+.fear-high{background:rgba(239,83,80,.12);color:#ef5350}
+.fear-mid{background:rgba(255,152,0,.12);color:#ff9800}
+.fear-low{background:rgba(38,166,154,.12);color:#26a69a}
+.fear-safe{background:rgba(41,98,255,.1);color:#2962FF}
+
+.top{background:#ffffff;border-bottom:1px solid #e0e3eb;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.top .logo{font-size:20px;font-weight:900;color:#2962FF;text-decoration:none}
+.top .nav a{color:#5f6771;text-decoration:none;font-size:13px;margin-left:18px;transition:color .2s}
+.top .nav a:hover{color:#2962FF}
+.container{max-width:1200px;margin:0 auto;padding:0}
+.back{margin-bottom:14px}
+.back a{color:#5f6771;text-decoration:none;font-size:13px}
+.back a:hover{color:#2962FF}
+h1{font-size:24px;color:#131722;margin-bottom:2px}
+.lvl{color:#787b86;font-size:13px;margin-bottom:16px}
+
+.analytics-table{width:100%;border-collapse:collapse;margin-bottom:16px;background:#fff;border:1px solid #e0e3eb;border-radius:8px;overflow:hidden}
+.analytics-table td{border:1px solid #f0f3fa;padding:10px 14px;text-align:center;font-size:13px;width:25%}
+.analytics-table td .al{color:#787b86;font-size:9px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.analytics-table td .av{font-size:18px;font-weight:700}
+.analytics-table td .av.green{color:#26a69a}
+.analytics-table td .av.red{color:#ef5350}
+.analytics-table td .av.gold{color:#f1c40f}
+.analytics-table td .av.blue{color:#2962FF}
+.analytics-table td .av.orange{color:#e67e22}
+.gc-badge{display:inline-block;padding:4px 14px;border-radius:12px;font-size:13px;font-weight:700}
+.gc-badge.golden{background:rgba(241,196,15,.1);color:#f1c40f}
+.gc-badge.death{background:rgba(239,83,80,.1);color:#ef5350}
+.gc-badge.bullish{background:rgba(38,166,154,.1);color:#26a69a}
+.gc-badge.bearish{background:#f0f3fa;color:#787b86}
+
+.balance-cell{vertical-align:middle!important;padding:6px 8px!important}
+
+.volume-row{display:flex;gap:10px;margin-bottom:16px}
+.vol-box{background:#fff;border:1px solid #e0e3eb;border-radius:8px;padding:10px 14px;text-align:center;flex:1}
+.vol-box .l{color:#787b86;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+.vol-box .v{font-size:15px;font-weight:700;margin-top:2px;color:#131722}
+
+.chart-wrap{background:#fff;border:1px solid #e0e3eb;border-radius:16px;padding:14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 20px 45px rgba(15,23,42,.06)}
+.chart-controls{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px}
+.ctrl-group{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ctrl-btn{padding:7px 12px;font-size:12px;font-weight:600;border:1px solid #e0e3eb;border-radius:8px;background:transparent;color:#5f6771;cursor:pointer;transition:all .15s;min-width:56px;text-align:center}
+.ctrl-btn:hover{border-color:#c8ccd6;color:#131722}
+.ctrl-btn.active{border-color:#2962FF;color:#2962FF;background:rgba(41,98,255,.1)}
+
+.chart-wrap{position:relative}
+.chart-wrap canvas{width:100%!important;height:260px!important}
+.chart-panel{position:absolute;top:14px;left:14px;z-index:5;display:flex;gap:12px;padding:8px 12px;background:rgba(255,255,255,.94);border-radius:12px;font-size:11px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid #e0e3eb;pointer-events:none;box-shadow:0 10px 24px rgba(15,23,42,.08)}
+.chart-panel .cp-item{color:#787b86;white-space:nowrap}
+.chart-panel .cp-item b{color:#131722;margin-left:5px;font-weight:700}
+.chart-panel .cp-item b.green{color:#26a69a}
+.chart-panel .cp-item b.red{color:#ef5350}
+.chart-panel .cp-item b.gold{color:#f1c40f}
+.chart-panel .cp-item b.blue{color:#2962FF}
+.chart-panel .cp-item b.orange{color:#e67e22}
+
+.ind-tbl{width:100%;border-collapse:collapse;margin-bottom:16px;background:#ffffff;border:1px solid #e0e3eb;border-radius:12px;overflow:hidden;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+.ind-tbl th{background:#f6f8fb;color:#5f6771;padding:12px 12px 10px;font-size:11px;text-align:left;font-weight:700;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e0e3eb}
+.ind-tbl td{padding:12px 12px;border-bottom:1px solid #f4f7fb;font-size:13px;color:#131722;vertical-align:middle}
+.ind-tbl tbody tr:last-child td{border-bottom:none}
+.ind-tbl .ind-name{color:#5f6771;font-weight:700}
+.ind-tbl .ind-val{font-family:monospace;font-weight:700;font-size:13px;color:#131722}
+.ind-tbl .ind-signal{font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.ind-tbl .ind-signal.buy{background:rgba(38,166,154,.12);color:#26a69a}
+.ind-tbl .ind-signal.sell{background:rgba(239,83,80,.12);color:#ef5350}
+.ind-tbl .ind-signal.neutral{background:#f0f3fa;color:#5f6771}
+.ind-tbl .ind-bar{width:100%;height:6px;background:#f4f7fb;border-radius:999px;overflow:hidden;min-width:80px}
+.ind-tbl .ind-bar-fill{height:100%;border-radius:999px;transition:width .3s}
+.ind-tbl .ind-detail{color:#787b86;font-size:11px;font-family:monospace;white-space:nowrap;opacity:.9}
+
+.ind-bar{display:flex;gap:8px;margin:30px 0 18px;overflow-x:auto;padding:8px 0;-webkit-overflow-scrolling:touch;border-top:1px solid #e8edf4;border-bottom:1px solid #e8edf4}
+.ind-bar::-webkit-scrollbar{height:4px}
+.ind-bar::-webkit-scrollbar-thumb{background:#d1d4dc;border-radius:4px}
+.ind-btn{flex-shrink:0;padding:8px 14px;font-size:11px;font-weight:700;border:1px solid #e0e3eb;border-radius:999px;background:#ffffff;color:#5f6771;cursor:pointer;transition:all .18s;font-family:inherit;white-space:nowrap}
+.ind-btn:hover{border-color:#c8ccd6;color:#131722;background:#f5f7fb}
+.ind-btn.on{border-color:var(--c);color:var(--c);background:rgba(41,98,255,.12)}
+
+.ind-charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:10px;margin-bottom:16px}
+.ind-chart-box{background:#fff;border:1px solid #e0e3eb;border-radius:8px;padding:10px;position:relative}
+.ind-chart-box .icb-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.ind-chart-box .icb-title{color:#787b86;font-size:9px;text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.ind-chart-box .icb-val{font-family:monospace;font-size:12px;font-weight:700}
+.ind-chart-box>div:last-child{width:100%;height:160px;display:block}
+
+
+
+
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#f8f9fc;color:#787b86;padding:7px 8px;text-align:left;font-weight:600;border-bottom:1px solid #e0e3eb}
+td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#131722}
+.badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700}
+.badge.buy{background:rgba(38,166,154,.1);color:#26a69a}
+.badge.sell{background:rgba(239,83,80,.1);color:#ef5350}
+.empty{padding:40px;text-align:center;color:#787b86}
+
+@media(max-width:600px){
+  .analytics-table td{padding:8px 6px;font-size:11px}
+  .analytics-table td .av{font-size:14px}
+  .chart-controls{flex-direction:column;align-items:stretch}
+  .charts-grid{grid-template-columns:1fr}
+}
+.tv-btn{padding:5px 12px;font-size:11px;font-weight:600;border:none;border-radius:4px;background:transparent;color:#787b86;cursor:pointer;transition:all .2s ease-in-out;font-family:inherit}
+.tv-btn:hover{color:#131722;background:#f0f3fa}
+.tv-btn.active{background:#2962FF!important;color:#fff!important}
+.type-btn{padding:5px 12px;font-size:11px;font-weight:600;border:1px solid #e0e3eb;border-radius:4px;background:transparent;color:#787b86;cursor:pointer;transition:all .2s ease-in-out;font-family:inherit}
+.type-btn:hover{color:#131722;border-color:#c8ccd6}
+.type-btn.active{background:#2962FF!important;color:#fff!important;border-color:#2962FF!important}
+
+.modal-backdrop{display:none;position:fixed;z-index:2000;left:0;top:0;width:100%;height:100%;background-color:rgba(0,0,0,.5);backdrop-filter:blur(3px);align-items:center;justify-content:center}
+.modal-content{background-color:#fff;border:1px solid #e0e3eb;padding:24px;border-radius:8px;width:320px;box-shadow:0 4px 20px rgba(0,0,0,.15);color:#131722}
+.modal-content h3{margin-top:0;font-size:16px;color:#2962FF}
+.modal-content p{color:#787b86;font-size:13px}
+.input-container{position:relative;margin:16px 0}
+#alarmPriceInput{width:100%;background-color:#f8f9fc;border:1px solid #e0e3eb;padding:10px;border-radius:4px;color:#131722;font-size:14px;box-sizing:border-box;outline:none}
+#alarmPriceInput:focus{border-color:#2962FF}
+.currency-label{position:absolute;right:10px;top:10px;color:#2962FF;font-size:12px}
+.modal-buttons{display:flex;gap:10px;justify-content:flex-end}
+.btn-primary{background-color:#2962FF;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:600}
+.btn-primary:hover{background-color:#1a53ff}
+.btn-secondary{background:transparent;color:#787b86;border:1px solid #e0e3eb;padding:8px 16px;border-radius:4px;cursor:pointer}
+.btn-secondary:hover{color:#131722;background:#f0f3fa}
+
+.main-dashboard-container{display:grid;width:100%;max-width:1200px;margin:0 auto;grid-template-columns:1.6fr 0.95fr;align-items:flex-start;gap:24px;box-sizing:border-box;padding:20px 20px 32px;background:#f8f9fc}
+.chart-section{display:flex;flex-direction:column;min-width:0;gap:18px}
+.analysis-sidebar-right{flex:0 0 auto;display:flex;flex-direction:column;gap:18px;overflow-y:auto;max-height:calc(100vh - 130px);padding-bottom:10px}
+.analysis-sidebar-right .calculator-panel,.analysis-sidebar-right .alarm-panel{background:#ffffff;border:1px solid #e0e3eb;border-radius:16px;padding:18px;box-shadow:0 12px 30px rgba(15,23,42,.06)}
+.alarm-card{display:flex;justify-content:space-between;align-items:center;background:#f4f6fb;padding:10px 12px;border-radius:10px;border-left:3px solid #ef5350;margin-bottom:8px;font-size:12px}
+.alarm-card .price{color:#131722;font-weight:700}
+.alarm-card .delete-alarm-btn{background:transparent;border:none;color:#ef5350;cursor:pointer;font-size:14px;padding:0 4px}
+.alarm-card .delete-alarm-btn:hover{color:#ff8080}
+.no-alarm-text{color:#787b86;font-size:12px;text-align:center;padding:12px}
+.alarm-panel-header{color:#131722;font-size:13px;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f0f3fa}
+.alarm-list-container{max-height:320px;overflow-y:auto}
+
+@keyframes placeholderShimmer{0%{background-position:-468px 0}100%{background-position:468px 0}}
+.shimmer-wrapper{position:absolute;top:0;left:0;width:100%;height:100%;background:#f0f3fa;z-index:1500;display:flex;flex-direction:column;padding:20px;box-sizing:border-box;gap:15px;opacity:1;transition:opacity 0.3s ease-out}
+.shimmer-line,.shimmer-box{background:#e0e3eb;background-image:linear-gradient(to right,#e0e3eb 0%,#f0f3fa 20%,#e0e3eb 40%,#e0e3eb 100%);background-repeat:no-repeat;background-size:800px 100%;animation-duration:1.25s;animation-fill-mode:forwards;animation-iteration-count:infinite;animation-name:placeholderShimmer;animation-timing-function:linear;border-radius:4px}
+.header-shimmer{width:40%;height:24px}
+.graph-shimmer{width:100%;flex-grow:1}
+.footer-shimmer{width:100%;height:20px}
+
+.calc-header{color:#131722;font-size:12px;font-weight:700;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f3fa}
+.calc-input-group{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.calc-input-group label{color:#787b86;font-size:10px}
+.calc-input-group input{background:#f8f9fc;border:1px solid #e0e3eb;padding:7px;border-radius:4px;color:#131722;font-size:12px;outline:none}
+.calc-input-group input:focus{border-color:#2962FF}
+.calc-checkbox-group{display:flex;align-items:center;gap:5px;margin:8px 0;color:#787b86;font-size:11px}
+.calc-checkbox-group input{accent-color:#2962FF}
+.calc-divider{border:0;border-top:1px solid #f0f3fa;margin:10px 0}
+.calc-result-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.calc-result-row span:first-child{color:#787b86}
+#calcResult.profit,#calcPercent.profit{color:#26a69a;font-weight:700}
+#calcResult.loss,#calcPercent.loss{color:#ef5350;font-weight:700}
+#calcResult.neutral,#calcPercent.neutral{color:#787b86}
+
+/* ---- TRADINGVIEW SYMBOL PAGE HEADER ---- */
+.tv-symbol-page-container{background-color:#ffffff;padding:24px;font-family:-apple-system,BlinkMacSystemFont,"Trebuchet MS",Roboto,sans-serif;color:#131722}
+.tv-symbol-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
+.symbol-left-block{display:flex;align-items:center;gap:20px}
+.symbol-logo-circle{width:100px;height:100px;background:radial-gradient(circle,#009688 0%,#00695c 100%);border-radius:50%;color:white;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;box-shadow:0 4px 12px rgba(0,150,136,0.2);flex-shrink:0}
+.symbol-main-title{font-size:36px;font-weight:800;color:#131722;letter-spacing:-0.5px;margin:0}
+.symbol-sub-info{display:flex;align-items:center;gap:10px;margin-top:4px;font-size:13px;color:#787b86}
+.ticker-code{font-weight:bold;color:#131722}
+.exchange-name{color:#787b86}
+.timeframe-badge{background:#f0f3fa;color:#ff9800;padding:2px 8px;border-radius:4px;font-weight:bold;font-size:11px}
+.fear-badge{padding:3px 10px;border-radius:4px;font-weight:700;font-size:11px;letter-spacing:0.3px}
+.fear-badge.fear-high{background:rgba(239,83,80,.12);color:#ef5350}
+.fear-badge.fear-mid{background:rgba(255,152,0,.12);color:#ff9800}
+.fear-badge.fear-low{background:rgba(38,166,154,.12);color:#26a69a}
+.fear-badge.fear-safe{background:rgba(41,98,255,.1);color:#2962FF}
+.symbol-price-block{text-align:right}
+.symbol-fear-center{display:flex;align-items:center;justify-content:center;flex:1}
+.fear-gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+.fear-gauge-label{font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;letter-spacing:0.3px}
+.fear-gauge-label.fear-high{background:rgba(239,83,80,.12);color:#ef5350}
+.fear-gauge-label.fear-mid{background:rgba(255,152,0,.12);color:#ff9800}
+.fear-gauge-label.fear-low{background:rgba(38,166,154,.12);color:#26a69a}
+.fear-gauge-label.fear-safe{background:rgba(41,98,255,.1);color:#2962FF}
+.indicators-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.ind-card{background:#f8f9fc;border:1px solid #e0e3eb;border-radius:10px;padding:12px 14px}
+.ind-label{font-size:10px;font-weight:700;color:#787b86;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+.ind-volume-bar{display:flex;flex-direction:column;gap:4px}
+.vol-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#e0e3eb}
+.vol-sell{background:#ef5350;transition:width .3s}
+.vol-buy{background:#26a69a;transition:width .3s}
+.vol-labels{display:flex;justify-content:space-between;font-size:9px;font-weight:600}
+.vol-sell-label{color:#ef5350}
+.vol-buy-label{color:#26a69a}
+.ind-seller{display:flex;flex-direction:column;align-items:center;gap:2px}
+.seller-big{font-size:28px;font-weight:800;color:#131722;line-height:1}
+.seller-sub{font-size:9px;color:#787b86}
+.seller-badge{font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:4px}
+.seller-badge.high{background:rgba(239,83,80,.1);color:#ef5350}
+.seller-badge.mid{background:rgba(255,152,0,.1);color:#ff9800}
+.seller-badge.low{background:rgba(41,98,255,.1);color:#2962FF}
+.ind-momentum{display:flex;flex-direction:column;align-items:center;gap:1px}
+.mom-arrow{font-size:20px;line-height:1}
+.mom-arrow.up{color:#26a69a} .mom-arrow.down{color:#ef5350} .mom-arrow.flat{color:#787b86}
+.mom-val{font-size:16px;font-weight:800}
+.mom-val.up{color:#26a69a} .mom-val.down{color:#ef5350} .mom-val.flat{color:#787b86}
+.mom-sub{font-size:9px;color:#787b86}
+.ind-buy-signal{padding:8px 10px;border-radius:6px;background:#f8f9fc}
+.buy-signal-text{font-size:14px;font-weight:800;margin-bottom:2px}
+.buy-signal-sub{font-size:9px;color:#787b86}
+.lvl-dropdown-wrap{position:relative;display:inline-block}
+.lvl-dropdown-btn{display:flex;align-items:center;gap:6px;background:#f0f3fa;border:1px solid #e0e3eb;border-radius:6px;padding:4px 10px;font-size:13px;font-weight:700;color:#131722;cursor:pointer;transition:all .15s}
+.lvl-dropdown-btn:hover{background:#e8ebf2;border-color:#c8ccd6}
+.lvl-dropdown-list{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:160px;max-height:320px;overflow-y:auto;background:#fff;border:1px solid #e0e3eb;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:100;padding:4px 0}
+.lvl-dropdown-list.open{display:block}
+.lvl-option{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;font-size:12px;font-weight:600;color:#333;cursor:pointer;transition:all .1s}
+.lvl-option:hover{background:rgba(0,0,0,.05);color:#111}
+.lvl-option.active{background:rgba(41,98,255,.1);color:#2962FF}
+.lvl-cnt{font-size:9px;color:#888;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:3px}
+.current-main-price{font-size:40px;font-weight:800;color:#131722;letter-spacing:-1px;line-height:1.1}
+.currency-unit{font-size:18px;color:#787b86;font-weight:500;margin-left:4px}
+.price-change-row{display:flex;gap:8px;font-size:16px;font-weight:bold;margin-top:2px}
+.price-change-row.up{color:#26a69a}
+.price-change-row.down{color:#ef5350}
+.market-close-caption{font-size:12px;color:#787b86;margin-top:4px}
+.tv-horizontal-tabs{display:flex;gap:24px;border-bottom:1px solid #e0e3eb;margin-bottom:16px}
+.tab-item{background:none;border:none;padding:12px 0;font-size:14px;font-weight:600;color:#787b86;cursor:pointer;position:relative;transition:color 0.2s}
+.tab-item:hover{color:#131722}
+.tab-item.active{color:#131722}
+.tab-item.active::after{content:'';position:absolute;bottom:-1px;left:0;width:100%;height:3px;background-color:#2962FF}
+.tv-chart-controls{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid #e0e3eb;gap:10px}
+.control-timeframes{display:flex;gap:2px;flex-wrap:wrap}
+.tv-btn{padding:4px 8px;font-size:10px;font-weight:600;border:none;border-radius:4px;background:transparent;color:#787b86;cursor:pointer;transition:all .15s;font-family:inherit}
+.tv-btn:hover{color:#131722;background:#f0f3fa}
+.tv-btn.active{background:#2962FF!important;color:#fff!important}
+.control-right-buttons{display:flex;gap:6px}
+.ctrl-icon-btn{padding:4px 10px;font-size:10px;font-weight:600;border:1px solid #e0e3eb;border-radius:4px;background:#fff;color:#555;cursor:pointer;transition:all .15s}
+.ctrl-icon-btn:hover{background:#f0f3fa;border-color:#c8ccd6;color:#131722}
+.control-right-buttons{display:flex;align-items:center;gap:8px}
+.ctrl-icon-btn{background:none;border:1px solid #e0e3eb;border-radius:4px;padding:6px 10px;cursor:pointer;font-size:13px;color:#787b86;transition:0.2s}
+.ctrl-icon-btn:hover{background:#f0f3fa;color:#131722;border-color:#c8ccd6}
+.btn-full-chart{background:none;border:1px solid #e0e3eb;border-radius:4px;padding:6px 12px;font-size:13px;font-weight:600;color:#131722;cursor:pointer;transition:0.2s}
+.btn-full-chart:hover{background:#f0f3fa;border-color:#b2b5be}
+
+/* ---- CHART WRAPPER ---- */
+#chart-wrapper{position:relative;width:100%;max-height:260px;height:260px;background-color:#fff;border-radius:12px;border:1px solid #e0e3eb;overflow:hidden}
+#chart-wrapper:fullscreen{max-height:none;height:100vh;border-radius:0;border:none}
+#chart-container{width:100%;height:100%}
+
+/* ---- INDICATOR TABLE CONTAINER ---- */
+.indicator-table-container{margin-top:15px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.indicator-row-box{background-color:#1a1e2c;padding:10px;border-radius:4px;border:1px solid #232838;display:flex;justify-content:space-between;align-items:center}
+
+/* ---- OSCILLATOR SUB-PANEL SEPARATORS ---- */
+.osc-label{position:absolute;right:8px;z-index:2;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;pointer-events:none;padding:2px 6px;border-radius:3px}
+
+/* ==========================================================================
+   PROFESYONEL VE RESPONSIVE LAYOUT DÜZENLEMELERİ
+   ========================================================================== */
+
+/* Masaüstü Ekranlar İçin Ekran Yüksekliğine Göre Grafik Alanını Sabitleme */
+@media (min-width: 1025px) {
+    .main-dashboard-container {
+        height: calc(100vh - 80px);
+        overflow: hidden;
+    }
+    .chart-section {
+        height: 100%;
+        overflow-y: auto;
+    }
+    .analysis-sidebar-right {
+        height: 100%;
+        overflow-y: auto;
+    }
+}
+
+/* Tablet Ekranlar İçin Düzenlemeler (Genişlik 1024px ve altı) */
+@media (max-width: 1024px) {
+    .main-dashboard-container {
+        flex-direction: column;
+        gap: 12px;
+    }
+    .chart-section, .analysis-sidebar-right {
+        width: 100% !important;
+        flex: none !important;
+    }
+    .analysis-sidebar-right {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+}
+
+/* Cep Telefonları İçin Düzenlemeler (Genişlik 768px ve altı) */
+@media (max-width: 768px) {
+    .watchlist-sidebar {
+        display: none !important;
+    }
+    .analysis-sidebar-right {
+        grid-template-columns: 1fr;
+    }
+    .time-frames-container, .chart-type-container {
+        overflow-x: auto;
+        white-space: nowrap;
+        max-width: 100%;
+        padding-bottom: 4px;
+    }
+    #chart-wrapper {
+        height: 320px !important;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="tv-navbar">
+    <div class="nav-left">
+        <a href="/dashboard" class="tv-logo">MARKET MASTER</a>
+        <div class="server-select-box">
+            <select id="globalServerSelect" onchange="window.location.href='/item/{{ item_name|urlencode }}?lvl='+encodeURIComponent(document.getElementById('lvlSelect').value)+'&server='+this.value">
+                <option value="ZERO" {{ 'selected' if current_server == 'ZERO' }}>ZERO</option>
+                <option value="PANDORA" {{ 'selected' if current_server == 'PANDORA' }}>PANDORA</option>
+                <option value="AGARTHA" {{ 'selected' if current_server == 'AGARTHA' }}>AGARTHA</option>
+                <option value="FELIS" {{ 'selected' if current_server == 'FELIS' }}>FELIS</option>
+                <option value="DESTAN" {{ 'selected' if current_server == 'DESTAN' }}>DESTAN</option>
+                <option value="MINARK" {{ 'selected' if current_server == 'MINARK' }}>MINARK</option>
+                <option value="DRYADS" {{ 'selected' if current_server == 'DRYADS' }}>DRYADS</option>
+                <option value="OREADS" {{ 'selected' if current_server == 'OREADS' }}>OREADS</option>
+            </select>
+        </div>
+    </div>
+    <div class="nav-center">
+        <div class="tv-search-wrapper">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="searchInput" placeholder="Eşya Ara..." autocomplete="off" />
+            <div id="searchDropdown"></div>
+        </div>
+    </div>
+    <div class="nav-right">
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+        <a href="/item" class="nav-link active">Item</a>
+        <a href="/endeks" class="nav-link">Endeks</a>
+    </div>
+</nav>
+
+<!-- AD BANNER -->
+<div class="ad-banner-wrap">
+  <a href="#" target="_blank" class="ad-banner">
+    <img src="{{ url_for('static', filename='img/ad-banner.svg') }}" alt="Reklam" onerror="this.parentElement.style.display='none'">
+  </a>
+</div>
+
+<!-- SEARCH MODAL -->
+<div id="tvSearchModal" class="search-backdrop">
+    <div class="search-modal-box">
+        <div class="search-modal-header">
+            <svg class="search-icon-modal" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="modalSearchInput" placeholder="Eşya veya sembol ara..." autocomplete="off" />
+            <span class="esc-badge">ESC</span>
+        </div>
+        <div id="searchResultsList" class="search-results-body">
+            <div class="search-placeholder-msg">Aramaya başlamak için bir şeyler yazın...</div>
+        </div>
+    </div>
+</div>
+
+<!-- TICKER BAR -->
+<div class="tv-ticker-bar">
+  {% if watchlist_items is defined and watchlist_items %}
+    {% for wl in watchlist_items %}
+    <div class="tv-ticker-card" onclick="window.location.href='/item/{{ wl.name|urlencode }}?lvl={{ wl.lvl|urlencode }}&server='+encodeURIComponent(CURRENT_SERVER)">
+      <div class="ticker-badge {% if loop.index0 == 0 %}b-mdr{% elif loop.index0 == 1 %}b-wb{% elif loop.index0 == 2 %}b-chr{% else %}b-default{% endif %}">{{ wl.short or wl.name[:2] }}</div>
+      <div class="ticker-info">
+        <span class="ticker-name">{{ wl.name }} (+{{ wl.lvl }})</span>
+        {% if wl.change_pct is not none %}
+        <span class="ticker-fear {% if wl.change_pct > 10 %}fear-high{% elif wl.change_pct > 5 %}fear-mid{% elif wl.change_pct > 0 %}fear-low{% else %}fear-safe{% endif %}">
+          {% if wl.change_pct > 10 %}KORKU: YÜKSEK{% elif wl.change_pct > 5 %}KORKU: ORTA{% elif wl.change_pct > 0 %}KORKU: DÜŞÜK{% else %}GÜVENLİ{% endif %}
+        </span>
+        {% endif %}
+        <span class="ticker-price {% if wl.change_pct and wl.change_pct > 0 %}up{% elif wl.change_pct and wl.change_pct < 0 %}down{% endif %}">
+          {{ "{:,}".format(wl.price|int) if wl.price else '-' }}
+          {% if wl.change_pct is not none %}<span class="pct">{% if wl.change_pct > 0 %}+{% endif %}{{ "%.2f"|format(wl.change_pct) }}%</span>{% endif %}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  {% endif %}
+</div>
+
+{% set s = stats %}
+{% set a = analytics %}
+
+<div class="tv-symbol-page-container">
+
+    <!-- 1. Ust Detay Satiri (Baslik, Logo ve Buyuk Fiyat) -->
+    <div class="tv-symbol-header">
+        <div class="symbol-left-block">
+            <div class="symbol-logo-circle">{{ item[:2] if item else '??' }}</div>
+            <div class="symbol-title-group">
+                <h1 class="symbol-main-title">{{ item }}</h1>
+                <div class="symbol-sub-info">
+                    <div class="lvl-dropdown-wrap">
+                      <button class="lvl-dropdown-btn" id="lvlBtn" onclick="toggleLvlDropdown()">
+                        <span id="lvlBtnText">{{ lvl if lvl else '+0' }}</span>
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                      </button>
+                      <div class="lvl-dropdown-list" id="lvlDropdown">
+                        {% set existing_lvls = all_levels|map(attribute='lvl')|list %}
+                        {% for n in range(0, 11) %}
+                          {% set val = '+' ~ n %}
+                          <div class="lvl-option {% if lvl == val %}active{% endif %}" onclick="selectLevel('{{ val }}')">
+                            <span>All {{ val }}</span>
+                            {% if val in existing_lvls %}
+                              {% for lv in all_levels %}{% if lv.lvl == val %}<span class="lvl-cnt">{{ lv.cnt }}</span>{% endif %}{% endfor %}
+                            {% endif %}
+                          </div>
+                        {% endfor %}
+                        {% for n in range(1, 22) %}
+                          {% set val = 'rev+' ~ n %}
+                          <div class="lvl-option {% if lvl == val %}active{% endif %}" onclick="selectLevel('{{ val }}')">
+                            <span>Reb +{{ n }}</span>
+                            {% if val in existing_lvls %}
+                              {% for lv in all_levels %}{% if lv.lvl == val %}<span class="lvl-cnt">{{ lv.cnt }}</span>{% endif %}{% endfor %}
+                            {% endif %}
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                    <span class="exchange-name">ZERO Sunucusu</span>
+                    <span class="timeframe-badge">D</span>
+                </div>
+            </div>
+        </div>
+        <div class="symbol-fear-center">
+            {% set fear_pct = a.change_pct if a and a.change_pct is defined else 0 %}
+            {% if fear_pct is none %}{% set fear_pct = 0 %}{% endif %}
+            <div class="fear-gauge-wrap">
+              <svg id="fearGauge" viewBox="0 0 100 55" width="80" height="44">
+                <defs>
+                  <linearGradient id="gGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#26a69a"/>
+                    <stop offset="33%" stop-color="#ffeb3b"/>
+                    <stop offset="66%" stop-color="#ff9800"/>
+                    <stop offset="100%" stop-color="#ef5350"/>
+                  </linearGradient>
+                </defs>
+                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#222" stroke-width="6" opacity="0.3"/>
+                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="url(#gGrad)" stroke-width="5" stroke-linecap="round"/>
+                <line id="fearNeedle" x1="50" y1="50" x2="10" y2="50" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="50" cy="50" r="3" fill="#fff"/>
+              </svg>
+              <div class="fear-gauge-label {% if fear_pct > 10 %}fear-high{% elif fear_pct > 5 %}fear-mid{% elif fear_pct > 0 %}fear-low{% else %}fear-safe{% endif %}">
+                {% if fear_pct > 10 %}KORKU: YÜKSEK{% elif fear_pct > 5 %}KORKU: ORTA{% elif fear_pct > 0 %}KORKU: DÜŞÜK{% else %}GÜVENLİ{% endif %}
+              </div>
+            </div>
+            <script>
+            (function(){
+              var pct={{ fear_pct }};
+              var clamped=Math.max(-5,Math.min(15,pct));
+              var angle=(clamped+5)/20*180;
+              var rad=angle*Math.PI/180;
+              var nx=50+40*Math.cos(Math.PI-rad);
+              var ny=50-40*Math.sin(Math.PI-rad);
+              var needle=document.getElementById('fearNeedle');
+              if(needle){needle.setAttribute('x2',nx);needle.setAttribute('y2',ny)}
+            })();
+            </script>
+        </div>
+        <div class="symbol-price-block">
+            {% set last_price = s.sell.median|int if s and s.sell else 0 %}
+            <div class="current-main-price">{{ "{:,}".format(last_price) }} <span class="currency-unit">Coins</span></div>
+            <div class="price-change-row {% if a and a.rsi_sell and a.rsi_sell > 50 %}up{% else %}down{% endif %}">
+                <span class="change-point">RSI: {{ a.rsi_sell|round(1) if a and a.rsi_sell else '-' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1.5 Gosterge Paneli -->
+    <div class="indicators-grid">
+      <!-- Pazar Hacmi -->
+      <div class="ind-card">
+        <div class="ind-label">Pazar Hacmi</div>
+        <div class="ind-volume-bar">
+          {% set vol_total = a.total_vol if a.total_vol else 1 %}
+          {% set sell_pct = (a.sell_vol / vol_total * 100)|int if vol_total > 0 else 50 %}
+          <div class="vol-bar">
+            <div class="vol-sell" style="width:{{ sell_pct }}%"></div>
+            <div class="vol-buy" style="width:{{ 100 - sell_pct }}%"></div>
+          </div>
+          <div class="vol-labels">
+            <span class="vol-sell-label">Satis: {{ a.sell_vol or 0 }}</span>
+            <span class="vol-buy-label">Alis: {{ a.buy_vol or 0 }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Satici Yogunlugu -->
+      <div class="ind-card">
+        <div class="ind-label">Satici Yogunlugu</div>
+        <div class="ind-seller">
+          <div class="seller-big">{{ a.seller_count or 0 }}</div>
+          <div class="seller-sub">farkli satici</div>
+          {% if a.seller_count and a.seller_count > 5 %}
+          <div class="seller-badge high">REKABET YUKSEK</div>
+          {% elif a.seller_count and a.seller_count > 2 %}
+          <div class="seller-badge mid">ORTA REKABET</div>
+          {% else %}
+          <div class="seller-badge low">AZ SATICI</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Fiyat Momentumu -->
+      <div class="ind-card">
+        <div class="ind-label">Fiyat Momentumu</div>
+        <div class="ind-momentum">
+          {% set mom = a.momentum or 0 %}
+          {% if mom > 2 %}
+          <div class="mom-arrow up">▲</div>
+          <div class="mom-val up">+{{ mom }}%</div>
+          <div class="mom-sub">Yukselis trendi</div>
+          {% elif mom < -2 %}
+          <div class="mom-arrow down">▼</div>
+          <div class="mom-val down">{{ mom }}%</div>
+          <div class="mom-sub">Dusus trendi</div>
+          {% else %}
+          <div class="mom-arrow flat">◆</div>
+          <div class="mom-val flat">{{ mom }}%</div>
+          <div class="mom-sub">Durgun</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- En Iyi Satin Alma Zamani -->
+      <div class="ind-card">
+        <div class="ind-label">En Iyi Satin Alma Zamani</div>
+        <div class="ind-buy-signal" style="border-left:3px solid {{ a.buy_signal_color }}">
+          <div class="buy-signal-text" style="color:{{ a.buy_signal_color }}">{{ a.buy_signal }}</div>
+          <div class="buy-signal-sub">RSI: {{ a.rsi_sell|round(1) if a and a.rsi_sell else '-' }} | Momentum: {{ a.momentum or 0 }}%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Yatay Menu Sekmeleri -->
+    <div class="tv-horizontal-tabs">
+        <button class="tab-item active">Genel Bakis</button>
+        <button class="tab-item">Teknik Analiz</button>
+        <button class="tab-item">Pazar Gecmisi</button>
+        <button class="tab-item">Hacim Raporu</button>
+    </div>
+
+    <!-- 3. Grafik Ust Kontrol Bari -->
+    <div class="tv-chart-controls">
+        <div class="control-timeframes">
+            <button class="tv-btn" data-interval="15">15dk</button>
+            <button class="tv-btn" data-interval="30">30dk</button>
+            <button class="tv-btn" data-interval="45">45dk</button>
+            <button class="tv-btn active" data-interval="60">1s</button>
+            <button class="tv-btn" data-interval="120">2s</button>
+            <button class="tv-btn" data-interval="240">4s</button>
+            <button class="tv-btn" data-interval="480">8s</button>
+            <button class="tv-btn" data-interval="960">16s</button>
+            <button class="tv-btn" data-interval="1440">1g</button>
+            <button class="tv-btn" data-interval="10080">1h</button>
+            <button class="tv-btn" data-interval="20160">2h</button>
+            <button class="tv-btn" data-interval="40320">4h</button>
+            <button class="tv-btn" data-interval="80640">8h</button>
+            <button class="tv-btn" data-interval="161280">16h</button>
+            <button class="tv-btn" data-interval="302400">1a</button>
+            <button class="tv-btn" data-interval="43200">1ay</button>
+            <button class="tv-btn" data-interval="129600">3ay</button>
+            <button class="tv-btn" data-interval="259200">6ay</button>
+            <button class="tv-btn" data-interval="518400">12ay</button>
+            <span style="margin-left:8px;border-left:1px solid #e0e3eb;padding-left:8px"></span>
+            <button class="type-btn active" data-type="candle">Mum</button>
+            <button class="type-btn" data-type="line">Çizgi</button>
+        </div>
+        <div class="control-right-buttons">
+            <span id="liveIndicator" style="display:inline-flex;align-items:center;gap:5px;background:#e8f5e9;color:#2e7d32;font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;border:1px solid #a5d6a7"><span style="width:7px;height:7px;border-radius:50%;background:#4caf50;animation:pulse 1.5s infinite"></span>CANLI</span>
+            <button class="ctrl-icon-btn" id="btnScreenshot" title="Ekran Goruntusu">Screenshot</button>
+            <button class="ctrl-icon-btn" id="btnFullscreen" title="Tam Ekran">Tam Grafik</button>
+            <button class="ctrl-icon-btn" id="btnSaveImg" title="Grafigi Kaydet">Kaydet</button>
+        </div>
+    </div>
+
+    <!-- 4. Ana Grafik Alani -->
+    <div id="chart-wrapper">
+        <div id="priceChart" style="width:100%;height:100%;position:relative">
+            <div id="shimmerOverlay" class="shimmer-wrapper">
+                <div class="shimmer-line header-shimmer"></div>
+                <div class="shimmer-box graph-shimmer"></div>
+                <div class="shimmer-line footer-shimmer"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+  <!-- INDICATOR BUTTONS -->
+  <div class="ind-bar" id="indBar">
+    <button class="ind-btn" data-ind="rsi" style="--c:#bb86fc">RSI</button>
+    <button class="ind-btn" data-ind="macd" style="--c:#2196f3">MACD</button>
+    <button class="ind-btn" data-ind="cci" style="--c:#ff9800">CCI</button>
+    <button class="ind-btn" data-ind="stochrsi" style="--c:#e91e63">StochRSI</button>
+    <button class="ind-btn" data-ind="ema" style="--c:#00bcd4">EMA</button>
+    <button class="ind-btn" data-ind="sma" style="--c:#4caf50">SMA</button>
+    <button class="ind-btn" data-ind="bollinger" style="--c:#ff5722">Bollinger</button>
+    <button class="ind-btn" data-ind="supertrend" style="--c:#9c27b0">Supertrend</button>
+    <button class="ind-btn" data-ind="atr" style="--c:#607d8b">ATR</button>
+    <button class="ind-btn" data-ind="fibonacci" style="--c:#ffd700">Fibonacci</button>
+    <button class="ind-btn" data-ind="sr" style="--c:#795548">S/R</button>
+    <button class="ind-btn" data-ind="ohlc" style="--c:#e94560">OHLC</button>
+  </div>
+
+  <!-- ALARM PANEL -->
+  <div class="alarm-panel" style="background:#fff;border:1px solid #e0e3eb;border-radius:16px;padding:18px;margin:12px 0;box-shadow:0 12px 30px rgba(15,23,42,.06)">
+    <div class="alarm-panel-header" style="color:#131722;font-size:13px;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f0f3fa">Fiyat Alarmlari</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="alarmInput" type="number" placeholder="Hedef fiyat (Coins)" style="flex:1;background:#f8f9fc;border:1px solid #e0e3eb;padding:8px 12px;border-radius:8px;font-size:13px;color:#131722;outline:none">
+      <button id="alarmBtn" style="background:#2962FF;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Alarm Kur</button>
+      <button id="alarmClear" style="background:#ef5350;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Temizle</button>
+    </div>
+    <div id="activeAlarmsList" class="alarm-list-container" style="max-height:320px;overflow-y:auto">
+      <div class="no-alarm-text" style="color:#787b86;font-size:12px;text-align:center;padding:12px">Kurulu alarm bulunmuyor.</div>
+    </div>
+  </div>
+
+  <!-- INDICATOR TABLE -->
+  <table class="ind-tbl" id="indTbl">
+    <thead>
+      <tr>
+        <th>Indikator</th>
+        <th>Deger</th>
+        <th>Sinyal</th>
+        <th style="width:30%">Grafik</th>
+        <th>Detay</th>
+      </tr>
+    </thead>
+    <tbody id="indBody"></tbody>
+  </table>
+
+  <script>
+  // ===== SEARCH =====
+  (function(){
+    var input=document.getElementById('searchInput');
+    var dd=document.getElementById('searchDropdown');
+    if(!input||!dd)return;
+    var timer=null,openIdx=-1;
+
+    input.addEventListener('input',function(){
+      clearTimeout(timer);
+      var q=this.value.trim();
+      if(q.length<1){dd.classList.remove('open');dd.innerHTML='';return}
+      timer=setTimeout(function(){
+        fetch('/api/autocomplete?q='+encodeURIComponent(q))
+          .then(function(r){return r.json()})
+          .then(function(d){
+            if(!d.items||d.items.length===0){dd.innerHTML='<div class="sd-hint">Sonuc bulunamadi</div>';dd.classList.add('open');return}
+            dd.innerHTML='';
+            d.items.forEach(function(name){
+              var el=document.createElement('div');
+              el.className='sd-item';
+              el.textContent=name;
+              el.setAttribute('data-name',name);
+              dd.appendChild(el);
+            });
+            dd.classList.add('open');
+            openIdx=-1;
+          })
+          .catch(function(){dd.classList.remove('open')});
+      },200);
+    });
+
+    input.addEventListener('keydown',function(e){
+      var items=dd.querySelectorAll('.sd-item');
+      if(!items.length||!dd.classList.contains('open'))return;
+      if(e.key==='ArrowDown'){e.preventDefault();openIdx=Math.min(openIdx+1,items.length-1);items.forEach(function(el,i){el.classList.toggle('active',i===openIdx)})}
+      else if(e.key==='ArrowUp'){e.preventDefault();openIdx=Math.max(openIdx-1,0);items.forEach(function(el,i){el.classList.toggle('active',i===openIdx)})}
+      else if(e.key==='Enter'){
+        e.preventDefault();
+        if(openIdx>=0&&items[openIdx]){
+          window.location.href='/item/'+encodeURIComponent(items[openIdx].getAttribute('data-name'))+'?lvl=%2B0&server='+encodeURIComponent(CURRENT_SERVER);
+        }else if(input.value.trim()){
+          window.location.href='/item/'+encodeURIComponent(input.value.trim())+'?lvl=%2B0&server='+encodeURIComponent(CURRENT_SERVER);
+        }
+      }else if(e.key==='Escape'){dd.classList.remove('open')}
+    });
+
+    dd.addEventListener('click',function(e){
+      var el=e.target.closest('.sd-item');
+      if(!el)return;
+      window.location.href='/item/'+encodeURIComponent(el.getAttribute('data-name'))+'?lvl=%2B0&server='+encodeURIComponent(CURRENT_SERVER);
+    });
+
+    document.addEventListener('click',function(e){
+      if(!e.target.closest('.tv-search-wrapper'))dd.classList.remove('open');
+    });
+
+    input.addEventListener('focus',function(){
+      if(dd.children.length>0&&input.value.trim().length>0)dd.classList.add('open');
+    });
+  })();
+  </script>
+
+  <script>
+  const ITEM_NAME = {{ item|tojson }};
+  const CURRENT_SERVER = {{ current_server|tojson }};
+  const ITEM_LVL = {{ lvl|tojson }};
+
+  /* ---- LEVEL DROPDOWN ---- */
+  function toggleLvlDropdown() {
+    document.getElementById('lvlDropdown').classList.toggle('open');
+  }
+  document.addEventListener('click', function(e) {
+    var wrap = document.querySelector('.lvl-dropdown-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('lvlDropdown').classList.remove('open');
+    }
+  });
+  function selectLevel(newLvl) {
+    window.location.href = '/item/' + encodeURIComponent(ITEM_NAME) + '?lvl=' + encodeURIComponent(newLvl) + '&server=' + encodeURIComponent(CURRENT_SERVER);
+  }
+
+  let PRICES = {{ prices|tojson }};
+  let currentRange = '1440';
+  let liveTimer = null;
+
+  /* ---- TIMESTAMP ---- */
+  function parseTS(ts) {
+    if (!ts) return new Date(0);
+    ts = ts.replace('T', ' ').trim();
+    const m = ts.match(/^(\d{2})\.(\d{2})\.(\d{4})\s*(.*)$/);
+    if (m) {
+      const timeStr = m[4] || '12:00:00';
+      return new Date(m[3] + '-' + m[2] + '-' + m[1] + 'T' + timeStr);
+    }
+    return new Date(ts);
+  }
+
+  function tsToSec(ts) {
+    const d = parseTS(ts);
+    return isNaN(d.getTime()) ? 0 : Math.floor(d.getTime() / 1000);
+  }
+
+  /* ---- FILTER (TradingView resolution format) ---- */
+  function filterByRange(prices, range) {
+    if (range === 'all') return prices;
+    let ms;
+    if (range === 'W') ms = 7 * 24 * 3600000;
+    else if (range === 'M') ms = 30 * 24 * 3600000;
+    else if (range === '3M') ms = 90 * 24 * 3600000;
+    else if (range === '6M') ms = 180 * 24 * 3600000;
+    else if (range === '1Y') ms = 365 * 24 * 3600000;
+    else ms = parseInt(range) * 60000;
+    const cutoff = Date.now() - ms;
+    return prices.filter(p => parseTS(p.timestamp).getTime() >= cutoff);
+  }
+
+  /* ---- INDICATORS ---- */
+  function calcSMA(data, period) {
+    const r = new Array(data.length).fill(null);
+    for (let i = period - 1; i < data.length; i++) {
+      let s = 0;
+      for (let j = i - period + 1; j <= i; j++) s += data[j];
+      r[i] = s / period;
+    }
+    return r;
+  }
+
+  function calcRSI(prices, period) {
+    const r = new Array(prices.length).fill(null);
+    if (prices.length < period + 1) return r;
+    let gains = 0, losses = 0;
+    for (let i = 1; i <= period; i++) {
+      const d = prices[i] - prices[i - 1];
+      if (d >= 0) gains += d; else losses -= d;
+    }
+    let avgGain = gains / period, avgLoss = losses / period;
+    r[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+    for (let i = period + 1; i < prices.length; i++) {
+      const d = prices[i] - prices[i - 1];
+      const g = d >= 0 ? d : 0, l = d < 0 ? -d : 0;
+      avgGain = (avgGain * (period - 1) + g) / period;
+      avgLoss = (avgLoss * (period - 1) + l) / period;
+      r[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+    }
+    return r;
+  }
+
+  function calcEMA(data, period) {
+    const r = new Array(data.length).fill(null);
+    if (data.length < 1) return r;
+    const k = 2 / (period + 1);
+    r[0] = data[0];
+    for (let i = 1; i < data.length; i++) r[i] = data[i] * k + r[i - 1] * (1 - k);
+    return r;
+  }
+
+  function calcStdDev(data, ma, period) {
+    const r = new Array(data.length).fill(null);
+    for (let i = period - 1; i < data.length; i++) {
+      let s = 0;
+      for (let j = i - period + 1; j <= i; j++) s += (data[j] - (ma[j] || data[j])) ** 2;
+      r[i] = Math.sqrt(s / period);
+    }
+    return r;
+  }
+
+  function calcMACD(data) {
+    const ema12 = calcEMA(data, 12);
+    const ema26 = calcEMA(data, 26);
+    const macd = new Array(data.length).fill(null);
+    for (let i = 0; i < data.length; i++) {
+      if (ema12[i] !== null && ema26[i] !== null) macd[i] = ema12[i] - ema26[i];
+    }
+    const signal = calcEMA(macd.filter(v => v !== null), 9);
+    const sigAligned = new Array(data.length).fill(null);
+    let si = 0;
+    for (let i = 0; i < data.length; i++) { if (macd[i] !== null) { sigAligned[i] = signal[si] !== undefined ? signal[si] : null; si++; } }
+    const hist = new Array(data.length).fill(null);
+    for (let i = 0; i < data.length; i++) { if (macd[i] !== null && sigAligned[i] !== null) hist[i] = macd[i] - sigAligned[i]; }
+    return { macd, signal: sigAligned, histogram: hist };
+  }
+
+  function calcCCI(data, period) {
+    const tp = data;
+    const sma = calcSMA(tp, period);
+    const r = new Array(data.length).fill(null);
+    for (let i = period - 1; i < data.length; i++) {
+      let md = 0;
+      for (let j = i - period + 1; j <= i; j++) md += Math.abs(tp[j] - (sma[i] || 0));
+      md /= period;
+      r[i] = md === 0 ? 0 : (tp[i] - (sma[i] || 0)) / (0.015 * md);
+    }
+    return r;
+  }
+
+  function calcStochRSI(data, period) {
+    const rsi = calcRSI(data, period);
+    const r = new Array(data.length).fill(null);
+    for (let i = period + period - 1; i < data.length; i++) {
+      let minRsi = Infinity, maxRsi = -Infinity;
+      for (let j = i - period + 1; j <= i; j++) {
+        if (rsi[j] !== null) { minRsi = Math.min(minRsi, rsi[j]); maxRsi = Math.max(maxRsi, rsi[j]); }
+      }
+      const range = maxRsi - minRsi;
+      r[i] = range === 0 ? 50 : ((rsi[i] - minRsi) / range) * 100;
+    }
+    return r;
+  }
+
+  function calcBollinger(data, period) {
+    const sma = calcSMA(data, period);
+    const std = calcStdDev(data, sma, period);
+    const upper = new Array(data.length).fill(null);
+    const lower = new Array(data.length).fill(null);
+    for (let i = 0; i < data.length; i++) {
+      if (sma[i] !== null && std[i] !== null) { upper[i] = sma[i] + 2 * std[i]; lower[i] = sma[i] - 2 * std[i]; }
+    }
+    return { upper, middle: sma, lower };
+  }
+
+  function calcATR(data, period) {
+    const tr = new Array(data.length).fill(null);
+    for (let i = 1; i < data.length; i++) tr[i] = Math.abs(data[i] - data[i - 1]);
+    return calcSMA(tr, period);
+  }
+
+  function calcSupertrend(data, period, mult) {
+    const atr = calcATR(data, period);
+    const hl = data.map((v, i) => i > 0 ? (v + data[i - 1]) / 2 : v);
+    const upper = new Array(data.length).fill(null);
+    const lower = new Array(data.length).fill(null);
+    const trend = new Array(data.length).fill(null);
+    for (let i = 0; i < data.length; i++) {
+      if (atr[i] !== null) {
+        upper[i] = hl[i] + mult * atr[i]; lower[i] = hl[i] - mult * atr[i];
+        trend[i] = data[i] > upper[i] ? 1 : (data[i] < lower[i] ? -1 : (i > 0 ? trend[i - 1] : 1));
+        if (i > 0) { if (trend[i] === 1 && lower[i] < lower[i - 1]) lower[i] = lower[i - 1]; if (trend[i] === -1 && upper[i] > upper[i - 1]) upper[i] = upper[i - 1]; }
+      }
+    }
+    const st = new Array(data.length).fill(null);
+    for (let i = 0; i < data.length; i++) { if (trend[i] !== null) st[i] = trend[i] === 1 ? lower[i] : upper[i]; }
+    return { value: st, trend };
+  }
+
+  function calcFibLevels(high, low) {
+    const diff = high - low;
+    return [{ level: 0, price: high }, { level: 0.236, price: high - diff * 0.236 }, { level: 0.382, price: high - diff * 0.382 },
+      { level: 0.5, price: high - diff * 0.5 }, { level: 0.618, price: high - diff * 0.618 }, { level: 0.786, price: high - diff * 0.786 },
+      { level: 1, price: low }];
+  }
+
+  function findSR(prices, times, window) {
+    const pts = [];
+    for (let i = window; i < prices.length - window; i++) {
+      let isHigh = true, isLow = true;
+      for (let j = i - window; j <= i + window; j++) {
+        if (j === i) continue;
+        if (prices[j] >= prices[i]) isHigh = false;
+        if (prices[j] <= prices[i]) isLow = false;
+      }
+      if (isHigh) pts.push({ time: times[i], price: prices[i], type: 'resistance' });
+      if (isLow) pts.push({ time: times[i], price: prices[i], type: 'support' });
+    }
+    return pts;
+  }
+
+  function findCrossPoints(ma5, ma20) {
+    const pts = [];
+    for (let i = 1; i < ma5.length; i++) {
+      if ([ma5[i],ma5[i-1],ma20[i],ma20[i-1]].some(v => v === null)) continue;
+      if ((ma5[i-1] < ma20[i-1] && ma5[i] >= ma20[i])) pts.push({ idx: i, type: 'golden' });
+      else if ((ma5[i-1] > ma20[i-1] && ma5[i] <= ma20[i])) pts.push({ idx: i, type: 'death' });
+    }
+    return pts;
+  }
+
+  /* ---- CHART DATA ---- */
+  let kChart = null;
+  let currentChartType = 'candle';
+  let activeInds = { rsi: false, macd: false, cci: false, stochrsi: false, ema: false, sma: false, bollinger: false, supertrend: false, atr: false, fibonacci: false, sr: false, ohlc: false };
+
+  function median(arr) {
+    if (arr.length === 0) return 0;
+    const s = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(s.length / 2);
+    return s.length % 2 !== 0 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+  }
+
+  function buildSortedData(prices) {
+    const sorted = [...prices].sort((a, b) => tsToSec(a.timestamp) - tsToSec(b.timestamp));
+    const buyAll = sorted.filter(p => p.type === 'buy');
+    const sellAll = sorted.filter(p => p.type === 'sell');
+
+    function aggregateByHour(data) {
+      const buckets = {};
+      data.forEach(p => {
+        const sec = tsToSec(p.timestamp);
+        const hour = Math.floor(sec / 3600) * 3600;
+        if (!buckets[hour]) buckets[hour] = [];
+        buckets[hour].push(p.price);
+      });
+      const keys = Object.keys(buckets).map(Number).sort((a, b) => a - b);
+      return {
+        prices: keys.map(k => Math.round(median(buckets[k]))),
+        times: keys,
+      };
+    }
+
+    const buyAgg = aggregateByHour(buyAll);
+    const sellAgg = aggregateByHour(sellAll);
+
+    const allBuckets = {};
+    sorted.forEach(p => {
+      const sec = tsToSec(p.timestamp);
+      const hour = Math.floor(sec / 3600) * 3600;
+      if (!allBuckets[hour]) allBuckets[hour] = [];
+      allBuckets[hour].push(p.price);
+    });
+    const allKeys = Object.keys(allBuckets).map(Number).sort((a, b) => a - b);
+    const uniPrices = allKeys.map(k => Math.round(median(allBuckets[k])));
+
+    return {
+      sorted,
+      buyPrices: buyAgg.prices, buyTimes: buyAgg.times,
+      sellPrices: sellAgg.prices, sellTimes: sellAgg.times,
+      uniPrices, uniTimes: allKeys,
+    };
+  }
+
+  function toSeries(prices, times, calcArr) {
+    return prices.map((p, i) => ({
+      time: times[i],
+      value: calcArr ? (calcArr[i] !== null ? calcArr[i] : p) : p,
+    })).filter(d => d.value !== null && d.time > 0);
+  }
+
+  /* ---- MAIN CHART ---- */
+  let rawOHLCData = [];
+
+  function prepareChartData(ohlcData) {
+    const seen = new Set();
+    rawOHLCData = ohlcData;
+    const data = ohlcData.map(item => {
+      return {
+        time: item.time,
+        open: Math.round(parseFloat(item.open)),
+        high: Math.round(parseFloat(item.high)),
+        low: Math.round(parseFloat(item.low)),
+        close: Math.round(parseFloat(item.close)),
+        volume: parseInt(item.volume) || 1,
+      };
+    }).filter(d => {
+      if (d.time <= 0 || isNaN(d.time)) return false;
+      if (seen.has(d.time)) return false;
+      seen.add(d.time);
+      return true;
+    });
+    data.sort((a, b) => a.time - b.time);
+    return data;
+  }
+
+  let _indicatorsRegistered = false;
+  function registerCustomIndicators() {
+    if (_indicatorsRegistered) return;
+    _indicatorsRegistered = true;
+
+    try { klinecharts.registerIndicator({
+      name: 'VWAP', shortName: 'VWAP', series: 'line',
+      styles: { line: { color: '#ff9800', size: 2 } },
+      calculate: (dataList) => {
+        let cumTPVol = 0, cumVol = 0;
+        return dataList.map(item => {
+          const tp = (item.high + item.low + item.close) / 3;
+          const vol = item.volume || 1;
+          cumTPVol += tp * vol; cumVol += vol;
+          return { value: cumTPVol / cumVol };
+        });
+      }
+    }); } catch(e) {}
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_SMA5', shortName: 'SMA5', series: 'line',
+      styles: { line: { color: '#3498db', size: 1 } },
+      calculate: (dataList) => {
+        const period = 5; const result = [];
+        for (let i = 0; i < dataList.length; i++) {
+          if (i < period - 1) { result.push({ value: null }); continue; }
+          let sum = 0; for (let j = i - period + 1; j <= i; j++) sum += dataList[j].close;
+          result.push({ value: sum / period });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_SMA20', shortName: 'SMA20', series: 'line',
+      styles: { line: { color: '#e67e22', size: 1 } },
+      calculate: (dataList) => {
+        const period = 20; const result = [];
+        for (let i = 0; i < dataList.length; i++) {
+          if (i < period - 1) { result.push({ value: null }); continue; }
+          let sum = 0; for (let j = i - period + 1; j <= i; j++) sum += dataList[j].close;
+          result.push({ value: sum / period });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_EMA9', shortName: 'EMA9', series: 'line',
+      styles: { line: { color: '#00bcd4', size: 1 } },
+      calculate: (dataList) => {
+        const period = 9; const result = [];
+        let ema = null;
+        for (let i = 0; i < dataList.length; i++) {
+          if (i < period - 1) { result.push({ value: null }); continue; }
+          if (ema === null) { let sum = 0; for (let j = 0; j < period; j++) sum += dataList[j].close; ema = sum / period; }
+          else { ema = (dataList[i].close - ema) * (2 / (period + 1)) + ema; }
+          result.push({ value: ema });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_EMA21', shortName: 'EMA21', series: 'line',
+      styles: { line: { color: '#0097a7', size: 1 } },
+      calculate: (dataList) => {
+        const period = 21; const result = [];
+        let ema = null;
+        for (let i = 0; i < dataList.length; i++) {
+          if (i < period - 1) { result.push({ value: null }); continue; }
+          if (ema === null) { let sum = 0; for (let j = 0; j < period; j++) sum += dataList[j].close; ema = sum / period; }
+          else { ema = (dataList[i].close - ema) * (2 / (period + 1)) + ema; }
+          result.push({ value: ema });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_BB', shortName: 'BB', series: 'line',
+      styles: { line: { color: '#ff5722', size: 1 } },
+      calculate: (dataList) => {
+        const period = 20; const result = [];
+        for (let i = 0; i < dataList.length; i++) {
+          if (i < period - 1) { result.push({ value: null }); continue; }
+          let sum = 0; for (let j = i - period + 1; j <= i; j++) sum += dataList[j].close;
+          const mid = sum / period;
+          let sqDiff = 0; for (let j = i - period + 1; j <= i; j++) sqDiff += Math.pow(dataList[j].close - mid, 2);
+          const std = Math.sqrt(sqDiff / period);
+          result.push({ value: mid + 2 * std });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_BB_Lower', shortName: 'BB-L', series: 'line',
+      styles: { line: { color: 'rgba(255,87,34,0.5)', size: 1 } },
+      calculate: (dataList) => {
+        const period = 20; const result = [];
+        for (let i = 0; i < dataList.length; i++) {
+          if (i < period - 1) { result.push({ value: null }); continue; }
+          let sum = 0; for (let j = i - period + 1; j <= i; j++) sum += dataList[j].close;
+          const mid = sum / period;
+          let sqDiff = 0; for (let j = i - period + 1; j <= i; j++) sqDiff += Math.pow(dataList[j].close - mid, 2);
+          const std = Math.sqrt(sqDiff / period);
+          result.push({ value: mid - 2 * std });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_BB_Mid', shortName: 'BB-M', series: 'line',
+      styles: { line: { color: 'rgba(255,87,34,0.3)', size: 1 } },
+      calculate: (dataList) => {
+        const period = 20; const result = [];
+        for (let i = 0; i < dataList.length; i++) {
+          if (i < period - 1) { result.push({ value: null }); continue; }
+          let sum = 0; for (let j = i - period + 1; j <= i; j++) sum += dataList[j].close;
+          result.push({ value: sum / period });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_SUPERTREND', shortName: 'ST', series: 'line',
+      styles: { line: { color: '#9c27b0', size: 2 } },
+      calculate: (dataList) => {
+        const period = 10; const multiplier = 3; const result = [];
+        let atr = 0; let upperBand = 0; let lowerBand = 0; let trend = 1;
+        for (let i = 0; i < dataList.length; i++) {
+          const hl2 = (dataList[i].high + dataList[i].low) / 2;
+          if (i === 0) { result.push({ value: hl2 }); continue; }
+          const prevClose = dataList[i - 1].close;
+          const tr = Math.max(dataList[i].high - dataList[i].low, Math.abs(dataList[i].high - prevClose), Math.abs(dataList[i].low - prevClose));
+          atr = (atr * (period - 1) + tr) / period;
+          upperBand = hl2 + multiplier * atr;
+          lowerBand = hl2 - multiplier * atr;
+          if (dataList[i].close > upperBand) trend = 1;
+          else if (dataList[i].close < lowerBand) trend = -1;
+          result.push({ value: trend === 1 ? lowerBand : upperBand });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_STOCHRSI', shortName: 'StochRSI', series: 'line',
+      styles: { line: { color: '#e91e63', size: 1 } },
+      calculate: (dataList) => {
+        const period = 14; const result = [];
+        const closes = dataList.map(d => d.close);
+        const rsiVals = [];
+        for (let i = 0; i < closes.length; i++) {
+          if (i < period) { rsiVals.push(50); continue; }
+          let gains = 0, losses = 0;
+          for (let j = i - period + 1; j <= i; j++) {
+            const diff = closes[j] - closes[j - 1];
+            if (diff > 0) gains += diff; else losses -= diff;
+          }
+          const rs = losses === 0 ? 100 : gains / losses;
+          rsiVals.push(100 - (100 / (1 + rs)));
+        }
+        for (let i = 0; i < closes.length; i++) {
+          if (i < period * 2) { result.push({ value: null }); continue; }
+          let min = Infinity, max = -Infinity;
+          for (let j = i - period + 1; j <= i; j++) { min = Math.min(min, rsiVals[j]); max = Math.max(max, rsiVals[j]); }
+          const stoch = max === min ? 50 : ((rsiVals[i] - min) / (max - min)) * 100;
+          result.push({ value: stoch });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_ATR', shortName: 'ATR', series: 'line',
+      styles: { line: { color: '#607d8b', size: 1 } },
+      calculate: (dataList) => {
+        const period = 14; const result = [];
+        let atr = 0;
+        for (let i = 0; i < dataList.length; i++) {
+          if (i === 0) { result.push({ value: 0 }); continue; }
+          const tr = Math.max(dataList[i].high - dataList[i].low, Math.abs(dataList[i].high - dataList[i - 1].close), Math.abs(dataList[i].low - dataList[i - 1].close));
+          atr = i < period ? (atr * i + tr) / (i + 1) : (atr * (period - 1) + tr) / period;
+          result.push({ value: atr });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_CCI', shortName: 'CCI', series: 'line',
+      styles: { line: { color: '#ff9800', size: 1 } },
+      calculate: (dataList) => {
+        const period = 20; const result = [];
+        for (let i = 0; i < dataList.length; i++) {
+          if (i < period - 1) { result.push({ value: null }); continue; }
+          let sum = 0; for (let j = i - period + 1; j <= i; j++) sum += (dataList[j].high + dataList[j].low + dataList[j].close) / 3;
+          const tpMa = sum / period;
+          let meanDev = 0; for (let j = i - period + 1; j <= i; j++) meanDev += Math.abs((dataList[j].high + dataList[j].low + dataList[j].close) / 3 - tpMa);
+          meanDev /= period;
+          const tp = (dataList[i].high + dataList[i].low + dataList[i].close) / 3;
+          result.push({ value: meanDev === 0 ? 0 : (tp - tpMa) / (0.015 * meanDev) });
+        }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_FIB', shortName: 'Fib', series: 'line',
+      styles: { line: { color: 'rgba(255,215,0,0.35)', size: 1, style: 1 } },
+      calculate: (dataList) => {
+        const result = [];
+        let max = -Infinity, min = Infinity;
+        for (const d of dataList) { if (d.high > max) max = d.high; if (d.low < min) min = d.low; }
+        const range = max - min;
+        for (const d of dataList) { result.push({ value: min + range * 0.382 }); }
+        return result;
+      }
+    });
+
+    klinecharts.registerIndicator({
+      name: 'CUSTOM_SR', shortName: 'S/R', series: 'line',
+      styles: { line: { color: 'rgba(76,175,80,0.3)', size: 1, style: 2 } },
+      calculate: (dataList) => {
+        const result = [];
+        let max = -Infinity, min = Infinity;
+        for (const d of dataList) { if (d.high > max) max = d.high; if (d.low < min) min = d.low; }
+        const mid = (max + min) / 2;
+        for (const d of dataList) { result.push({ value: mid }); }
+        return result;
+      }
+    });
+  }
+
+  function buildMainChart() {
+    const container = document.getElementById('priceChart');
+    if (!container) {
+      console.error("HATA: 'priceChart' elementi bulunamadi!");
+      return;
+    }
+
+    const candleData = prepareChartData(currentOHLC);
+    console.log('[CHART] candleData:', candleData.length, candleData.slice(0,2));
+    if (candleData.length < 2) {
+      console.warn('[CHART] Not enough data points:', candleData.length);
+      container.innerHTML = '';
+      return;
+    }
+
+    const klineData = candleData.map(d => ({
+      timestamp: d.time * 1000,
+      open: d.open, high: d.high, low: d.low, close: d.close, volume: d.volume || 1
+    }));
+    console.log('[CHART] klineData sample:', klineData.slice(0,2));
+
+    registerCustomIndicators();
+
+    if (kChart) {
+      console.log('[CHART] applyNewData to existing chart');
+      kChart.applyNewData(klineData);
+      updateKlineIndicators();
+      return;
+    }
+
+    container.innerHTML = '';
+    container.style.width = '100%';
+    container.style.height = '260px';
+    container.style.position = 'relative';
+
+    const isArea = (currentChartType === 'line');
+    console.log('[CHART] chartType:', currentChartType, 'isArea:', isArea);
+
+    kChart = klinecharts.init('priceChart', {
+      styles: {
+        layout: { background: { color: '#ffffff' }, textColor: '#131722' },
+        candle: {
+          type: isArea ? 'area' : 'candle_solid',
+          bar: { upColor: '#26a69a', downColor: '#ef5350', noChangeColor: '#888' },
+          area: { lineColor: '#2962FF', lineSize: 2, value: 'close', backgroundColor: [{ offset: 0, color: 'rgba(41,98,255,0.3)' }, { offset: 1, color: 'rgba(41,98,255,0.01)' }] }
+        },
+        grid: { show: false }
+      }
+    });
+    console.log('[CHART] kChart created:', !!kChart);
+
+    kChart.applyNewData(klineData);
+    updateKlineIndicators();
+  }
+
+  function updateKlineIndicators() {
+    if (!kChart) return;
+
+    ['CUSTOM_SMA5', 'CUSTOM_SMA20', 'CUSTOM_EMA9', 'CUSTOM_EMA21', 'CUSTOM_BB', 'CUSTOM_BB_Lower', 'CUSTOM_BB_Mid', 'CUSTOM_SUPERTREND', 'CUSTOM_FIB', 'CUSTOM_SR'].forEach(name => {
+      try { kChart.removeIndicator(name, 'candle_pane'); } catch(e) {}
+    });
+    ['CUSTOM_RSI', 'CUSTOM_STOCHRSI', 'CUSTOM_MACD', 'CUSTOM_CCI', 'CUSTOM_ATR'].forEach(name => {
+      try { kChart.removeIndicator(name); } catch(e) {}
+    });
+    try { kChart.removeIndicator('RSI'); } catch(e) {}
+    try { kChart.removeIndicator('MACD'); } catch(e) {}
+    try { kChart.removeIndicator('CCI'); } catch(e) {}
+    try { kChart.removeIndicator('WR'); } catch(e) {}
+
+    if (activeInds.sma) {
+      kChart.createIndicator('CUSTOM_SMA5', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_SMA20', false, { id: 'candle_pane' });
+    }
+    if (activeInds.ema) {
+      kChart.createIndicator('CUSTOM_EMA9', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_EMA21', false, { id: 'candle_pane' });
+    }
+    if (activeInds.bollinger) {
+      kChart.createIndicator('CUSTOM_BB', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_BB_Lower', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_BB_Mid', false, { id: 'candle_pane' });
+    }
+    if (activeInds.supertrend) {
+      kChart.createIndicator('CUSTOM_SUPERTREND', false, { id: 'candle_pane' });
+    }
+    if (activeInds.fibonacci) {
+      kChart.createIndicator('CUSTOM_FIB', false, { id: 'candle_pane' });
+    }
+    if (activeInds.sr) {
+      kChart.createIndicator('CUSTOM_SR', false, { id: 'candle_pane' });
+    }
+
+    if (activeInds.rsi) {
+      kChart.createIndicator('RSI', false, { id: 'rsi_pane', height: 80 });
+    }
+    if (activeInds.stochrsi) {
+      kChart.createIndicator('CUSTOM_STOCHRSI', false, { id: 'stochrsi_pane', height: 80 });
+    }
+    if (activeInds.macd) {
+      kChart.createIndicator('MACD', false, { id: 'macd_pane', height: 80 });
+    }
+    if (activeInds.cci) {
+      kChart.createIndicator('CCI', false, { id: 'cci_pane', height: 80 });
+    }
+    if (activeInds.atr) {
+      kChart.createIndicator('CUSTOM_ATR', false, { id: 'atr_pane', height: 80 });
+    }
+
+    try {
+      const existingTooltip = document.getElementById('chartTooltip');
+      if (!existingTooltip) {
+        const tooltipEl = document.createElement('div');
+        tooltipEl.id = 'chartTooltip';
+        tooltipEl.style.cssText = 'position:absolute;display:none;padding:8px 12px;font-size:12px;text-align:left;z-index:1000;top:12px;left:12px;pointer-events:none;border-radius:8px;background:rgba(255,255,255,.96);color:#131722;border:1px solid #e0e3eb;box-shadow:0 4px 16px rgba(0,0,0,.08);font-family:-apple-system,BlinkMacSystemFont,Roboto,sans-serif;backdrop-filter:blur(6px);transition:opacity .1s';
+        container.style.position = 'relative';
+        container.appendChild(tooltipEl);
+      }
+    } catch(e) {}
+  }
+
+  function switchChartType(type) {
+    currentChartType = type;
+    if (kChart) {
+      try { kChart.dispose(); } catch(e) {}
+      kChart = null;
+    }
+    buildMainChart();
+  }
+
+  /* ---- OHLC ---- */
+  function buildOHLC(d) {
+    const buckets = {};
+    d.sorted.forEach(p => {
+      const hour = Math.floor(tsToSec(p.timestamp) / 3600) * 3600;
+      if (!buckets[hour]) buckets[hour] = { open: p.price, high: p.price, low: p.price, close: p.price, time: hour };
+      else { buckets[hour].high = Math.max(buckets[hour].high, p.price); buckets[hour].low = Math.min(buckets[hour].low, p.price); buckets[hour].close = p.price; }
+    });
+    return Object.values(buckets).sort((a, b) => a.time - b.time);
+  }
+
+  /* ---- INDICATOR TABLE ---- */
+  function buildIndicatorTable() {
+    const tbody = document.getElementById('indBody');
+    tbody.innerHTML = '';
+    const filtered = filterByRange(PRICES, currentRange);
+    const d = buildSortedData(filtered);
+    if (d.sorted.length < 2) return;
+
+    const rsiVals = calcRSI(d.sellPrices, 14);
+    const ma5Vals = calcSMA(d.sellPrices, 5);
+    const ma20Vals = calcSMA(d.sellPrices, 20);
+    const ema9 = calcEMA(d.uniPrices, 9);
+    const ema21 = calcEMA(d.uniPrices, 21);
+    const macd = calcMACD(d.uniPrices);
+    const cciVals = calcCCI(d.uniPrices, 20);
+    const stochRsiVals = calcStochRSI(d.sellPrices, 14);
+    const bollinger = calcBollinger(d.uniPrices, 20);
+    const atrVals = calcATR(d.uniPrices, 14);
+    const supertrend = calcSupertrend(d.uniPrices, 10, 3);
+    const fibLevels = calcFibLevels(Math.max(...d.uniPrices), Math.min(...d.uniPrices));
+    const srPts = findSR(d.uniPrices, d.uniTimes, 3);
+    const crossPts = findCrossPoints(ma5Vals, ma20Vals);
+    const ohlc = buildOHLC(d);
+    const lastPrice = d.uniPrices[d.uniPrices.length - 1];
+
+    function lastVal(arr) { const v = arr.filter(x => x !== null); return v.length > 0 ? v[v.length - 1] : null; }
+    function fmtP(v) { return v !== null ? Number(v).toLocaleString('tr-TR') : '-'; }
+    function fmtD(v, dec) { return v !== null ? v.toFixed(dec) : '-'; }
+    function sig(type, text) { return `<span class="ind-signal ${type}">${text}</span>`; }
+    function barHTML(pct, color) { return `<div class="ind-bar"><div class="ind-bar-fill" style="width:${Math.min(100, Math.max(0, pct))}%;background:${color}"></div></div>`; }
+
+    const rsiLast = lastVal(rsiVals), macdLast = lastVal(macd.macd), signalLast = lastVal(macd.signal), histLast = lastVal(macd.histogram);
+    const cciLast = lastVal(cciVals), stochLast = lastVal(stochRsiVals), atrLast = lastVal(atrVals);
+    const bbUpper = lastVal(bollinger.upper), bbLower = lastVal(bollinger.lower), bbMid = lastVal(bollinger.middle);
+    const stLast = lastVal(supertrend.value), stTrend = supertrend.trend.filter(x => x !== null), stDir = stTrend.length > 0 ? stTrend[stTrend.length - 1] : 0;
+    const ema9Last = lastVal(ema9), ema21Last = lastVal(ema21), sma5Last = lastVal(ma5Vals), sma20Last = lastVal(ma20Vals);
+    const srSupport = srPts.filter(p => p.type === 'support'), srResistance = srPts.filter(p => p.type === 'resistance');
+
+    const rows = [
+      { name: 'RSI (14)', color: '#bb86fc', val: fmtD(rsiLast, 1), signal: rsiLast !== null ? (rsiLast > 70 ? sig('sell', 'ASIRI ALIM') : rsiLast < 30 ? sig('buy', 'ASIRI SATIM') : sig('neutral', 'NOTR')) : sig('neutral', '-'), bar: barHTML(rsiLast !== null ? rsiLast : 50, rsiLast !== null ? (rsiLast > 70 ? '#e74c3c' : rsiLast < 30 ? '#2ecc71' : '#888') : '#333'), detail: rsiLast !== null ? `${fmtD(rsiLast, 1)} / 30-70` : '-' },
+      { name: 'MACD', color: '#2196f3', val: fmtD(macdLast, 1), signal: macdLast !== null && signalLast !== null ? (macdLast > signalLast ? sig('buy', 'YUKARI') : sig('sell', 'ASAGI')) : sig('neutral', '-'), bar: barHTML(macdLast !== null ? 50 + (macdLast / (Math.abs(macdLast) + 1)) * 50 : 50, macdLast !== null ? (macdLast > signalLast ? '#2ecc71' : '#e74c3c') : '#333'), detail: `Sinyal: ${fmtD(signalLast, 1)} / Hist: ${fmtD(histLast, 1)}` },
+      { name: 'CCI (20)', color: '#ff9800', val: fmtD(cciLast, 0), signal: cciLast !== null ? (cciLast > 100 ? sig('sell', 'ASIRI ALIM') : cciLast < -100 ? sig('buy', 'ASIRI SATIM') : sig('neutral', 'NOTR')) : sig('neutral', '-'), bar: barHTML(cciLast !== null ? 50 + (cciLast / 400) * 50 : 50, cciLast !== null ? (cciLast > 100 ? '#e74c3c' : cciLast < -100 ? '#2ecc71' : '#888') : '#333'), detail: cciLast !== null ? `${fmtD(cciLast, 0)} / -100..+100` : '-' },
+      { name: 'StochRSI (14)', color: '#e91e63', val: fmtD(stochLast, 1), signal: stochLast !== null ? (stochLast > 80 ? sig('sell', 'ASIRI ALIM') : stochLast < 20 ? sig('buy', 'ASIRI SATIM') : sig('neutral', 'NOTR')) : sig('neutral', '-'), bar: barHTML(stochLast !== null ? stochLast : 50, stochLast !== null ? (stochLast > 80 ? '#e74c3c' : stochLast < 20 ? '#2ecc71' : '#888') : '#333'), detail: stochLast !== null ? `${fmtD(stochLast, 1)} / 20..80` : '-' },
+      { name: 'EMA (9/21)', color: '#00bcd4', val: `${fmtP(ema9Last)} / ${fmtP(ema21Last)}`, signal: ema9Last !== null && ema21Last !== null ? (ema9Last > ema21Last ? sig('buy', 'YUKARI') : sig('sell', 'ASAGI')) : sig('neutral', '-'), bar: barHTML(ema9Last !== null && ema21Last !== null ? Math.min(100, Math.max(0, ((ema9Last - ema21Last) / ema21Last * 1000) + 50)) : 50, ema9Last !== null && ema9Last > ema21Last ? '#2ecc71' : '#e74c3c'), detail: ema9Last !== null && ema21Last !== null ? `Fark: ${Number(ema9Last - ema21Last).toLocaleString('tr-TR')}` : '-' },
+      { name: 'SMA (5/20)', color: '#4caf50', val: `${fmtP(sma5Last)} / ${fmtP(sma20Last)}`, signal: sma5Last !== null && sma20Last !== null ? (sma5Last > sma20Last ? sig('buy', 'YUKARI') : sig('sell', 'ASAGI')) : sig('neutral', '-'), bar: barHTML(sma5Last !== null && sma20Last !== null ? Math.min(100, Math.max(0, ((sma5Last - sma20Last) / sma20Last * 1000) + 50)) : 50, sma5Last !== null && sma5Last > sma20Last ? '#2ecc71' : '#e74c3c'), detail: crossPts.length > 0 ? `<span style="color:#ffd700">${crossPts[crossPts.length-1].type === 'golden' ? 'GC' : 'DC'}` : (sma5Last !== null && sma20Last !== null ? `Fark: ${Number(sma5Last - sma20Last).toLocaleString('tr-TR')}` : '-') },
+      { name: 'Bollinger', color: '#ff5722', val: `${fmtP(bbUpper)} / ${fmtP(bbMid)} / ${fmtP(bbLower)}`, signal: lastPrice !== null && bbUpper !== null && bbLower !== null ? (lastPrice >= bbUpper ? sig('sell', 'UST BANT') : lastPrice <= bbLower ? sig('buy', 'ALT BANT') : sig('neutral', 'ORTA')) : sig('neutral', '-'), bar: barHTML(lastPrice !== null && bbUpper !== null && bbLower !== null && bbUpper !== bbLower ? ((lastPrice - bbLower) / (bbUpper - bbLower) * 100) : 50, '#ff5722'), detail: bbUpper !== null && bbLower !== null ? `Genislik: ${Number(bbUpper - bbLower).toLocaleString('tr-TR')}` : '-' },
+      { name: 'ATR (14)', color: '#607d8b', val: fmtP(atrLast), signal: atrLast !== null ? (atrLast > lastPrice * 0.03 ? sig('sell', 'YUKSEK VOLATILITE') : sig('buy', 'DUSUK VOLATILITE')) : sig('neutral', '-'), bar: barHTML(atrLast !== null && lastPrice ? (atrLast / lastPrice * 1000) : 50, '#607d8b'), detail: atrLast !== null && lastPrice ? `%${(atrLast / lastPrice * 100).toFixed(2)}` : '-' },
+      { name: 'Supertrend', color: '#9c27b0', val: fmtP(stLast), signal: stDir !== 0 ? (stDir === 1 ? sig('buy', 'YUKARI TREND') : sig('sell', 'ASAGI TREND')) : sig('neutral', '-'), bar: barHTML(stDir === 1 ? 75 : stDir === -1 ? 25 : 50, stDir === 1 ? '#2ecc71' : stDir === -1 ? '#e74c3c' : '#888'), detail: stDir === 1 ? 'Trend: Yukari' : stDir === -1 ? 'Trend: Asagi' : 'Trend: Belirsiz' },
+      { name: 'Fibonacci', color: '#ffd700', val: fibLevels.length > 3 ? fmtP(fibLevels[3].price) : '-', signal: lastPrice !== null && fibLevels.length > 3 ? (lastPrice >= fibLevels[0].price ? sig('sell', 'TEPE') : lastPrice <= fibLevels[6].price ? sig('buy', 'DIP') : sig('neutral', 'ARALIK')) : sig('neutral', '-'), bar: barHTML(50, '#ffd700'), detail: fibLevels.slice(0, 4).map(f => `${fmtP(f.price)}`).join(' | ') },
+      { name: 'S/R', color: '#795548', val: srPts.length > 0 ? fmtP(srPts[0].price) : '-', signal: lastPrice !== null && srPts.length > 0 ? (() => { const nearSup = srSupport.filter(p => Math.abs(p.price - lastPrice) / lastPrice < 0.02); const nearRes = srResistance.filter(p => Math.abs(p.price - lastPrice) / lastPrice < 0.02); if (nearRes.length > 0) return sig('sell', 'DIRENCE YAKIN'); if (nearSup.length > 0) return sig('buy', 'DESTEGE YAKIN'); return sig('neutral', 'UZAK'); })() : sig('neutral', '-'), bar: barHTML(srPts.length > 0 ? 60 : 50, '#795548'), detail: `Destek: ${srSupport.length} / Direnc: ${srResistance.length}` },
+      { name: 'OHLC', color: '#e94560', val: ohlc.length > 0 ? fmtP(ohlc[ohlc.length - 1].close) : '-', signal: ohlc.length > 1 ? (ohlc[ohlc.length-1].close >= ohlc[ohlc.length-1].open ? sig('buy', 'YESIL KAMAM') : sig('sell', 'KIRMIZI KAMAM')) : sig('neutral', '-'), bar: barHTML(ohlc.length > 0 ? ((ohlc[ohlc.length-1].close - ohlc[ohlc.length-1].low) / Math.max(1, ohlc[ohlc.length-1].high - ohlc[ohlc.length-1].low) * 100) : 50, ohlc.length > 0 && ohlc[ohlc.length-1].close >= ohlc[ohlc.length-1].open ? '#2ecc71' : '#e74c3c'), detail: ohlc.length > 0 ? `O:${fmtP(ohlc[ohlc.length-1].open)} H:${fmtP(ohlc[ohlc.length-1].high)} L:${fmtP(ohlc[ohlc.length-1].low)} C:${fmtP(ohlc[ohlc.length-1].close)}` : '-' },
+    ];
+
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="ind-name" style="color:${row.color}">${row.name}</td><td class="ind-val" style="color:${row.color}">${row.val}</td><td>${row.signal}</td><td>${row.bar}</td><td class="ind-detail">${row.detail}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    drawGauge(rsiLast);
+  }
+
+  /* ---- HISTORICAL DATA LOADED ---- */
+
+  /* ---- PRICE ALARM ---- */
+  let activeAlarms = [];
+
+  function setPriceAlarm(targetPrice) {
+    if (!kChart) return;
+    const price = parseFloat(targetPrice);
+    if (isNaN(price) || price <= 0) return;
+
+    const alarmId = Date.now();
+    activeAlarms.push({ id: alarmId, price: price });
+    renderAlarmsList();
+  }
+
+  function deleteAlarm(id) {
+    const idx = activeAlarms.findIndex(a => a.id === id);
+    if (idx !== -1) {
+      activeAlarms.splice(idx, 1);
+      renderAlarmsList();
+    }
+  }
+
+  function renderAlarmsList() {
+    const container = document.getElementById('activeAlarmsList');
+    if (!container) return;
+    if (activeAlarms.length === 0) {
+      container.innerHTML = '<div class="no-alarm-text">Kurulu alarm bulunmuyor.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    activeAlarms.forEach(alarm => {
+      const card = document.createElement('div');
+      card.className = 'alarm-card';
+      card.innerHTML = '<div><span style="color:#848e9c">Fiyat: </span><span class="price">' + Number(alarm.price.toFixed(0)).toLocaleString('tr-TR') + '</span></div><button class="delete-alarm-btn" onclick="deleteAlarm(' + alarm.id + ')">&times;</button>';
+      container.appendChild(card);
+    });
+  }
+
+  /* ---- MODAL + ALARM BUTONLARI ---- */
+  const _alarmInput = document.getElementById('alarmInput');
+  const _closeModalBtn = document.getElementById('closeAlarmModalBtn');
+  const _alarmModal = document.getElementById('alarmModal');
+  const _saveAlarmBtn = document.getElementById('saveAlarmBtn');
+  const _alarmBtn = document.getElementById('alarmBtn');
+  const _alarmClear = document.getElementById('alarmClear');
+
+  if (_closeModalBtn) _closeModalBtn.addEventListener('click', () => {
+    if (_alarmModal) _alarmModal.style.display = 'none';
+  });
+  if (_alarmModal) _alarmModal.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) e.target.style.display = 'none';
+  });
+  if (_saveAlarmBtn) _saveAlarmBtn.addEventListener('click', () => {
+    const inp = document.getElementById('alarmPriceInput');
+    const val = inp ? inp.value : '';
+    if (val && parseFloat(val) > 0) {
+      setPriceAlarm(parseFloat(val));
+      if (_alarmModal) _alarmModal.style.display = 'none';
+      if (inp) inp.value = '';
+    }
+  });
+
+  if (_alarmBtn) _alarmBtn.addEventListener('click', () => {
+    const val = _alarmInput ? _alarmInput.value.trim() : '';
+    if (!val || isNaN(val) || parseFloat(val) <= 0) { if (_alarmInput) _alarmInput.focus(); return; }
+    setPriceAlarm(parseFloat(val));
+    if (_alarmInput) { _alarmInput.value = ''; }
+  });
+  if (_alarmInput) _alarmInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && _alarmBtn) _alarmBtn.click();
+  });
+  if (_alarmClear) _alarmClear.addEventListener('click', () => {
+    activeAlarms = [];
+    renderAlarmsList();
+    if (_alarmInput) _alarmInput.value = '';
+  });
+
+  /* ---- WATCHLIST ---- */
+  document.querySelectorAll('.watchlist-item').forEach(node => {
+    node.addEventListener('click', function() {
+      document.querySelectorAll('.watchlist-item').forEach(n => n.classList.remove('active'));
+      this.classList.add('active');
+      const name = this.getAttribute('data-item');
+      const lvl = this.getAttribute('data-lvl');
+      window.location.href = '/item/' + encodeURIComponent(name) + '?lvl=' + encodeURIComponent(lvl) + '&server=' + encodeURIComponent(CURRENT_SERVER);
+    });
+  });
+
+  /* ---- CALCULATOR ---- */
+  function calculateAdvancedProfit() {
+    const buyPrice = parseFloat(document.getElementById('buyPriceInput').value) || 0;
+    const sellPrice = parseFloat(document.getElementById('sellPriceInput').value) || 0;
+    const commissionRate = parseFloat(document.getElementById('commissionSelect').value) || 0.03;
+    const taxEl = document.getElementById('calcTaxAmount');
+    const payoutEl = document.getElementById('calcNetPayout');
+    const resultEl = document.getElementById('calcResult');
+    const percentEl = document.getElementById('calcPercent');
+    if (!taxEl || !payoutEl || !resultEl || !percentEl) return;
+
+    if (buyPrice === 0 || sellPrice === 0) {
+      taxEl.innerText = '0 Coins';
+      payoutEl.innerText = '0 Coins';
+      resultEl.innerText = '0 Coins'; resultEl.className = 'neutral';
+      percentEl.innerText = '%0'; percentEl.className = 'neutral';
+      return;
+    }
+
+    const taxAmount = sellPrice * commissionRate;
+    const netPayout = sellPrice - taxAmount;
+    const netProfit = netPayout - buyPrice;
+    const profitPct = (netProfit / buyPrice) * 100;
+
+    taxEl.innerText = Math.round(taxAmount).toLocaleString('tr-TR') + ' Coins';
+    payoutEl.innerText = Math.round(netPayout).toLocaleString('tr-TR') + ' Coins';
+    resultEl.innerText = (netProfit > 0 ? '+' : '') + Math.round(netProfit).toLocaleString('tr-TR') + ' Coins';
+    percentEl.innerText = (netProfit > 0 ? '+' : '') + profitPct.toFixed(1) + '%';
+
+    if (netProfit > 0) { resultEl.className = 'profit'; percentEl.className = 'profit'; }
+    else if (netProfit < 0) { resultEl.className = 'loss'; percentEl.className = 'loss'; }
+    else { resultEl.className = 'neutral'; percentEl.className = 'neutral'; }
+  }
+
+  const _buyInput = document.getElementById('buyPriceInput');
+  const _sellInput = document.getElementById('sellPriceInput');
+  const _commissionSelect = document.getElementById('commissionSelect');
+  if (_buyInput) _buyInput.addEventListener('input', calculateAdvancedProfit);
+  if (_sellInput) _sellInput.addEventListener('input', calculateAdvancedProfit);
+  if (_commissionSelect) _commissionSelect.addEventListener('change', calculateAdvancedProfit);
+
+  /* ---- CONTROLS ---- */
+  let currentOHLC = [];
+  let autoInterval = 'auto';
+
+  function showShimmer() {
+    const el = document.getElementById('shimmerOverlay');
+    if (el) { el.style.display = 'flex'; el.style.opacity = '1'; }
+  }
+  function hideShimmer() {
+    const el = document.getElementById('shimmerOverlay');
+    if (el) {
+      el.style.transition = 'opacity 0.3s ease-out';
+      el.style.opacity = '0';
+      setTimeout(() => { if (el) el.style.display = 'none'; }, 300);
+    }
+  }
+
+  async function fetchOHLC(interval, showLoading) {
+    if (showLoading) showShimmer();
+    try {
+      const resp = await fetch('/api/ohlc/' + encodeURIComponent(ITEM_NAME) + '?lvl=' + encodeURIComponent(ITEM_LVL) + '&interval=' + encodeURIComponent(interval));
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      console.log('[OHLC] ' + interval + ': ' + (data.ohlc ? data.ohlc.length : 0) + ' mum');
+      let ohlc = data.ohlc || [];
+      
+      if (ohlc.length === 0) {
+        const now = Math.floor(Date.now() / 1000);
+        ohlc = [];
+        let price = 50000000;
+        for (let i = 30; i >= 0; i--) {
+          const time = now - (i * 86400);
+          const volatility = (Math.random() - 0.5) * price * 0.05;
+          const open = price;
+          price += volatility;
+          const close = price;
+          const high = Math.max(open, close) + Math.abs(volatility) * 0.5;
+          const low = Math.min(open, close) - Math.abs(volatility) * 0.5;
+          const volume = Math.floor(Math.random() * 1000000) + 100000;
+          ohlc.push({ time, open, high, low, close, volume });
+        }
+      }
+      
+      return ohlc.sort((a, b) => a.time - b.time);
+    } catch(e) {
+      console.error('[ERR] fetchOHLC:', e);
+      return currentOHLC;
+    } finally {
+      if (showLoading) hideShimmer();
+    }
+  }
+
+  async function applyRange(interval) {
+    currentRange = interval;
+    document.querySelectorAll('.tv-btn').forEach(b => b.classList.toggle('active', b.dataset.interval === interval));
+    currentOHLC = await fetchOHLC(interval, true);
+    if (!currentOHLC || currentOHLC.length < 2) {
+      currentOHLC = await fetchOHLC('auto', false);
+    }
+    rawOHLCData = currentOHLC;
+    buildMainChart();
+    try { buildIndicatorTable(); } catch(e) { console.error('[ERR] buildIndicatorTable:', e.message); }
+  }
+
+  document.querySelectorAll('.tv-btn').forEach(btn => {
+    btn.addEventListener('click', function() { applyRange(this.dataset.interval); });
+  });
+
+  document.querySelectorAll('.type-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      switchChartType(this.dataset.type);
+    });
+  });
+
+  const _indBar = document.getElementById('indBar');
+  if (_indBar) _indBar.addEventListener('click', e => {
+    const btn = e.target.closest('.ind-btn');
+    if (!btn || !btn.dataset.ind) return;
+    activeInds[btn.dataset.ind] = !activeInds[btn.dataset.ind];
+    btn.classList.toggle('on', activeInds[btn.dataset.ind]);
+    try { buildMainChart(); } catch(e) { console.error('[ERR] buildMainChart:', e.message); }
+  });
+
+  /* ---- GAUGE ---- */
+  let lastRSI = 50;
+  function drawGauge(rsiValue) {
+    if (rsiValue != null) lastRSI = rsiValue;
+    const canvas = document.getElementById('gauge');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height, cx = W / 2, cy = H - 10, r = 80, sw = 18;
+    const startAngle = Math.PI * 0.75, endAngle = Math.PI * 2.25, totalAngle = endAngle - startAngle;
+    const value = Math.max(0, Math.min(100, lastRSI));
+    const needleAngle = startAngle + (value / 100) * totalAngle;
+    ctx.clearRect(0, 0, W, H);
+    ctx.beginPath(); ctx.arc(cx, cy, r, startAngle, endAngle); ctx.strokeStyle = '#0a0a0f'; ctx.lineWidth = sw + 4; ctx.lineCap = 'round'; ctx.stroke();
+    [{ from: 0, to: 25, color: '#e74c3c' }, { from: 25, to: 45, color: '#e67e22' }, { from: 45, to: 55, color: '#f1c40f' }, { from: 55, to: 75, color: '#2ecc71' }, { from: 75, to: 100, color: '#27ae60' }].forEach(seg => {
+      ctx.beginPath(); ctx.arc(cx, cy, r, startAngle + (seg.from / 100) * totalAngle, startAngle + (seg.to / 100) * totalAngle); ctx.strokeStyle = seg.color; ctx.lineWidth = sw; ctx.lineCap = 'butt'; ctx.stroke();
+    });
+    const nLen = r - 22, nx = cx + Math.cos(needleAngle) * nLen, ny = cy + Math.sin(needleAngle) * nLen;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(nx, ny); ctx.strokeStyle = '#d1d4dc'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fillStyle = '#e94560'; ctx.fill(); ctx.strokeStyle = '#0a0a0f'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#d1d4dc'; ctx.font = 'bold 16px Segoe UI,Arial,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(Math.round(value) + '%', cx, cy - r + 38);
+    let sentiment, sColor;
+    if (value < 25) { sentiment = 'KORKU'; sColor = '#e74c3c'; } else if (value < 45) { sentiment = 'ENDISE'; sColor = '#e67e22'; } else if (value < 55) { sentiment = 'NOTR'; sColor = '#f1c40f'; } else if (value < 75) { sentiment = 'HIRS'; sColor = '#2ecc71'; } else { sentiment = 'FOMO'; sColor = '#27ae60'; }
+    ctx.fillStyle = sColor; ctx.font = 'bold 11px Segoe UI,Arial,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(sentiment, cx, cy - r + 56);
+    ctx.fillStyle = '#555'; ctx.font = '9px Segoe UI,Arial,sans-serif'; ctx.fillText('Korku', cx - r + 22, cy + 1); ctx.fillText('FOMO', cx + r - 22, cy + 1);
+
+    const statusEl = document.getElementById('gauge-status-text');
+    const durumEl = document.getElementById('gauge-durum');
+    if (statusEl) statusEl.innerText = '%' + Math.round(value) + ' ' + sentiment;
+    if (durumEl) {
+      if (value > 70) { durumEl.innerText = 'BULLISH'; durumEl.style.color = '#26a69a'; }
+      else if (value < 30) { durumEl.innerText = 'BEARISH'; durumEl.style.color = '#ef5350'; }
+      else { durumEl.innerText = 'NEUTRAL'; durumEl.style.color = '#848e9c'; }
+    }
+  }
+
+  (async () => {
+    try { currentOHLC = await fetchOHLC('auto', true); } catch(e) {}
+    rawOHLCData = currentOHLC;
+    try { buildMainChart(); } catch(e) { console.error('[ERR] buildMainChart:', e.message, e.stack); }
+    try { buildIndicatorTable(); } catch(e) { console.error('[ERR] buildIndicatorTable:', e.message); }
+    try { drawGauge(); } catch(e) { console.error('[ERR] drawGauge:', e.message); }
+  })();
+
+  /* ---- CHART TOOLS ---- */
+  document.getElementById('btnScreenshot').addEventListener('click', () => {
+    if (!kChart) { alert('Grafik bulunamadi'); return; }
+    kChart.getImage('png', (dataUrl) => {
+      const link = document.createElement('a');
+      link.download = ITEM_NAME + '_' + ITEM_LVL + '_screenshot.png';
+      link.href = dataUrl;
+      link.click();
+    });
+  });
+
+  document.getElementById('btnSaveImg').addEventListener('click', () => {
+    if (!kChart) { alert('Grafik bulunamadi'); return; }
+    kChart.getImage('png', (dataUrl) => {
+      const link = document.createElement('a');
+      link.download = ITEM_NAME + '_' + ITEM_LVL + '_' + new Date().toISOString().slice(0,10) + '.png';
+      link.href = dataUrl;
+      link.click();
+    });
+  });
+
+  document.getElementById('btnFullscreen').addEventListener('click', () => {
+    const wrapper = document.getElementById('chart-wrapper');
+    if (!wrapper) return;
+    if (!document.fullscreenElement) {
+      wrapper.requestFullscreen().then(() => {
+        setTimeout(() => { if (kChart) kChart.resize(wrapper.clientWidth, wrapper.clientHeight); }, 200);
+      }).catch(err => alert('Tam ekran hatasi: ' + err.message));
+    } else {
+      document.exitFullscreen();
+    }
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    const wrapper = document.getElementById('chart-wrapper');
+    if (!wrapper) return;
+    setTimeout(() => {
+      if (kChart) {
+        if (document.fullscreenElement) {
+          kChart.resize(wrapper.clientWidth, wrapper.clientHeight);
+        } else {
+          kChart.resize(wrapper.clientWidth, 260);
+        }
+      }
+    }, 200);
+  });
+</script>
+
+<div id="alarmModal" class="modal-backdrop">
+  <div class="modal-content">
+    <h3>Fiyat Alarmi Kur</h3>
+    <p>Hedef fiyati girin, grafikte kirmizi kesikli hat gorunecektir.</p>
+    <div class="input-container">
+      <input id="alarmPriceInput" type="number" placeholder="Orn: 50000000">
+      <span class="currency-label">Coins</span>
+    </div>
+    <div class="modal-buttons">
+      <button id="closeAlarmModalBtn" class="btn-secondary">Iptal</button>
+      <button id="saveAlarmBtn" class="btn-primary">Alarm Kur</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

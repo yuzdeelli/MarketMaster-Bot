@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Item Listesi - Market Master</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#d1d4dc;padding:20px}
+.top{background:linear-gradient(135deg,#0d0d1a,#1a0a0a);border-bottom:3px solid #e94560;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin:-20px -20px 20px -20px}
+.top .logo{font-size:22px;font-weight:900;color:#e94560;text-decoration:none}
+.top .nav a{color:#666;text-decoration:none;font-size:12px;margin-left:14px}
+.top .nav a:hover{color:#e94560}
+h1{font-size:20px;color:#fff;margin-bottom:16px}
+.raw-box{background:#111122;border:1px solid #1a1a2e;border-radius:8px;padding:16px;margin-bottom:20px;position:relative}
+.raw-box pre{font-family:monospace;font-size:12px;line-height:1.8;color:#d1d4dc;white-space:pre-wrap;word-break:break-all}
+.copy-btn{position:absolute;top:10px;right:10px;padding:6px 16px;background:#e94560;color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer}
+.copy-btn:hover{background:#c73851}
+.copy-btn.copied{background:#2ecc71}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#0d0d1a;color:#555;padding:8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1a1a2e}
+td{padding:7px 8px;border-bottom:1px solid #0f0f1a}
+tr:hover{background:rgba(233,69,96,.05)}
+.price{font-family:monospace;font-weight:700;color:#2ecc71}
+.lvl{color:#f1c40f;font-weight:600}
+.raw{font-family:monospace;font-size:11px;color:#555;max-width:500px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.raw:hover{color:#d1d4dc}
+.raw.active{background:#1a1a2e;color:#e94560;padding:4px 8px;border-radius:3px;white-space:pre-wrap;word-break:break-all}
+.tab-btns{display:flex;gap:8px;margin-bottom:16px}
+.tab-btn{padding:6px 16px;border:1px solid #1a1a2e;border-radius:4px;background:transparent;color:#555;font-size:11px;font-weight:600;cursor:pointer}
+.tab-btn.active{border-color:#e94560;color:#e94560;background:rgba(233,69,96,.1)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="logo" href="/">MARKET MASTER</a>
+  <div class="nav">
+    <a href="/liste">Liste</a>
+  </div>
+</div>
+
+<h1>Item Listesi ({{ items|length }} item)</h1>
+
+<div class="tab-btns">
+  <button class="tab-btn active" onclick="showTab('raw')">Ham Metin</button>
+  <button class="tab-btn" onclick="showTab('table')">Tablo</button>
+</div>
+
+<div id="tab-raw" class="tab-content active">
+  <div class="raw-box">
+    <button class="copy-btn" onclick="copyAll()">KOPYALA</button>
+    <pre id="rawText">{{ raw_text }}</pre>
+  </div>
+</div>
+
+<div id="tab-table" class="tab-content">
+  <table>
+    <thead><tr><th>#</th><th>Item</th><th>Lvl</th><th>Fiyat</th><th>Ham</th></tr></thead>
+    <tbody>
+    {% for it in items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ it.name }}</td>
+        <td class="lvl">{{ it.lvl }}</td>
+        <td class="price">{{ "{:,.0f}".format(it.price|float) }}</td>
+        <td class="raw" onclick="copyLine(this, '{{ it.raw }}')">{{ it.raw }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function showTab(t) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + t).classList.add('active');
+  event.target.classList.add('active');
+}
+function copyAll() {
+  const text = document.getElementById('rawText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'KOPYALANDI!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'KOPYALA'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+function copyLine(el, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    el.classList.add('active');
+    setTimeout(() => el.classList.remove('active'), 1000);
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canli Pazar - Market Master</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0a0a14;color:#e0e0e0;min-height:100vh}
+
+.header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2a2a4a}
+.header h1{font-size:20px;font-weight:700;color:#00ff96}
+.header .stats{display:flex;gap:20px;font-size:13px;color:#aaa}
+.header .stats span{display:flex;align-items:center;gap:6px}
+.header .stats .dot{width:8px;height:8px;border-radius:50%;background:#00ff96;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.controls{padding:12px 24px;display:flex;gap:12px;align-items:center;background:#0f0f1e;border-bottom:1px solid #1a1a3a}
+.controls select,.controls input{background:#1a1a2e;border:1px solid #2a2a4a;color:#e0e0e0;padding:6px 12px;border-radius:6px;font-size:13px}
+.controls label{font-size:12px;color:#888}
+.controls .refresh-info{margin-left:auto;font-size:11px;color:#666}
+
+.feed{padding:16px 24px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 140px);overflow-y:auto}
+.feed::-webkit-scrollbar{width:6px}
+.feed::-webkit-scrollbar-track{background:#0a0a14}
+.feed::-webkit-scrollbar-thumb{background:#2a2a4a;border-radius:3px}
+
+.item-card{background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #2a2a4a;border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;transition:all 0.3s;animation:slideIn 0.3s ease}
+.item-card:hover{border-color:#00ff96;transform:translateX(4px)}
+@keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+.item-card.new{border-left:4px solid #00ff96}
+.item-card.up{border-left:4px solid #00ff96}
+.item-card.down{border-left:4px solid #ff4757}
+.item-card.same{border-left:4px solid #666}
+
+.item-left{display:flex;flex-direction:column;gap:4px}
+.item-name{font-size:15px;font-weight:700;color:#fff}
+.item-meta{font-size:11px;color:#888;display:flex;gap:12px}
+.item-meta .server{color:#3498db}
+.item-meta .type{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.item-meta .type.sell{background:rgba(255,71,87,0.15);color:#ff4757}
+.item-meta .type.buy{background:rgba(0,255,150,0.15);color:#00ff96}
+
+.item-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.item-price{font-size:18px;font-weight:800;color:#fff}
+.item-change{font-size:12px;font-weight:600;padding:2px 8px;border-radius:8px}
+.item-change.up{background:rgba(0,255,150,0.1);color:#00ff96}
+.item-change.down{background:rgba(255,71,87,0.1);color:#ff4757}
+.item-change.zero{color:#666}
+.item-time{font-size:10px;color:#555}
+
+.activity-bar{position:fixed;bottom:0;left:0;right:0;background:#0f0f1e;border-top:1px solid #1a1a3a;padding:8px 24px;display:flex;align-items:center;gap:16px;font-size:12px;color:#666}
+.activity-bar .live-dot{width:8px;height:8px;border-radius:50%;background:#ff4757;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+.no-data{text-align:center;padding:60px;color:#555;font-size:16px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>CANLI PAZAR</h1>
+  <div class="stats">
+    <span><span class="dot"></span> Canli</span>
+    <span>Toplam: <b id="totalCount">0</b> kayit</span>
+    <span>Son guncelleme: <b id="lastUpdate">-</b></span>
+  </div>
+</div>
+
+<div class="controls">
+  <label>Sunucu:</label>
+  <select id="serverFilter">
+    <option value="">Tumu</option>
+  </select>
+  <label>Guncelleme:</label>
+  <select id="refreshRate">
+    <option value="2">2 sn</option>
+    <option value="5" selected>5 sn</option>
+    <option value="10">10 sn</option>
+    <option value="30">30 sn</option>
+  </select>
+  <div class="refresh-info">
+    <span id="countdown">5</span> sn sonra guncellenecek
+  </div>
+</div>
+
+<div class="feed" id="feed">
+  <div class="no-data">Veriler yukleniyor...</div>
+</div>
+
+<div class="activity-bar">
+  <span class="live-dot"></span>
+  <span>CANLI VERI AKISI</span>
+  <span id="itemCount">0 item goruleniyor</span>
+  <span style="margin-left:auto">Market Master</span>
+</div>
+
+<script>
+let refreshTimer = null;
+let countdownTimer = null;
+let lastItems = {};
+let countdown = 5;
+
+async function fetchLive() {
+  try {
+    const server = document.getElementById('serverFilter').value;
+    const resp = await fetch('/api/live?server=' + encodeURIComponent(server));
+    const data = await resp.json();
+    renderFeed(data);
+    updateStats(data);
+  } catch(e) {
+    console.error('Live fetch error:', e);
+  }
+}
+
+function renderFeed(data) {
+  const feed = document.getElementById('feed');
+  const items = data.items || [];
+
+  if (items.length === 0) {
+    feed.innerHTML = '<div class="no-data">Veri bulunamadi</div>';
+    return;
+  }
+
+  let html = '';
+  items.forEach(item => {
+    const key = item.item_name + '|' + item.item_lvl + '|' + item.type + '|' + item.server;
+    const prev = lastItems[key];
+    const isNew = !prev;
+    const changed = prev && prev.price !== item.price;
+    const wentUp = changed && item.price > prev.price;
+    const wentDown = changed && item.price < prev.price;
+
+    let cls = 'same';
+    if (isNew) cls = 'new';
+    else if (wentUp) cls = 'up';
+    else if (wentDown) cls = 'down';
+
+    const changePct = item.change_pct || 0;
+    let changeCls = 'zero';
+    let changeText = '-';
+    if (changePct > 0) { changeCls = 'up'; changeText = '+' + changePct.toFixed(1) + '%'; }
+    else if (changePct < 0) { changeCls = 'down'; changeText = changePct.toFixed(1) + '%'; }
+
+    const time = item.timestamp ? item.timestamp.substring(11, 19) : '';
+
+    html += `
+      <div class="item-card ${cls}">
+        <div class="item-left">
+          <div class="item-name">${item.item_name} <span style="color:#888;font-weight:400">${item.item_lvl}</span></div>
+          <div class="item-meta">
+            <span class="server">${item.server}</span>
+            <span class="type ${item.type}">${item.type.toUpperCase()}</span>
+            <span>${time}</span>
+          </div>
+        </div>
+        <div class="item-right">
+          <div class="item-price">${Number(item.price).toLocaleString('tr-TR')}</div>
+          <div class="item-change ${changeCls}">${changeText}</div>
+        </div>
+      </div>
+    `;
+
+    lastItems[key] = { price: item.price };
+  });
+
+  feed.innerHTML = html;
+}
+
+function updateStats(data) {
+  document.getElementById('totalCount').textContent = Number(data.total || 0).toLocaleString('tr-TR');
+  document.getElementById('lastUpdate').textContent = data.last_update ? data.last_update.substring(11, 19) : '-';
+  document.getElementById('itemCount').textContent = (data.items || []).length + ' item goruluyor';
+
+  const sel = document.getElementById('serverFilter');
+  if (sel.options.length <= 1 && data.servers) {
+    data.servers.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s;
+      opt.textContent = s;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh();
+  const secs = parseInt(document.getElementById('refreshRate').value) || 5;
+  countdown = secs;
+
+  fetchLive();
+
+  countdownTimer = setInterval(() => {
+    countdown--;
+    document.getElementById('countdown').textContent = countdown;
+    if (countdown <= 0) {
+      fetchLive();
+      countdown = secs;
+    }
+  }, 1000);
+}
+
+function stopAutoRefresh() {
+  if (countdownTimer) clearInterval(countdownTimer);
+}
+
+document.getElementById('refreshRate').addEventListener('change', startAutoRefresh);
+document.getElementById('serverFilter').addEventListener('change', () => {
+  lastItems = {};
+  fetchLive();
+});
+
+startAutoRefresh();
+</script>
+
+</body>
+</html>

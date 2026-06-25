@@ -1,0 +1,261 @@
+/* ============================================
+   MARKET MASTER — REALISTIC 3D LANDING
+   ============================================ */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+body{background:#050510;color:#fff}
+
+/* ---- Stars ---- */
+.stars{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.star{position:absolute;background:#fff;border-radius:50%;animation:twinkle ease-in-out infinite alternate}
+@keyframes twinkle{0%{opacity:.1;transform:scale(.6)}100%{opacity:1;transform:scale(1.3)}}
+
+/* ---- Particles ---- */
+.particles{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.particle{position:absolute;bottom:-10px;background:rgba(41,98,255,.35);border-radius:50%;animation:pFloat linear infinite}
+@keyframes pFloat{0%{transform:translateY(0) translateX(0)}25%{transform:translateY(-25vh) translateX(15px)}50%{transform:translateY(-50vh) translateX(-10px)}75%{transform:translateY(-75vh) translateX(8px)}100%{transform:translateY(-110vh) translateX(0)}}
+
+/* ============================================
+   GLOBE SCENE
+   ============================================ */
+.globe-scene{
+    position:fixed;top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    width:650px;height:650px;
+    display:flex;align-items:center;justify-content:center;
+    z-index:1;
+    perspective:800px;
+}
+
+/* ---- Globe ---- */
+.globe-container{
+    position:relative;
+    width:240px;height:240px;
+    animation:globeFloat 6s ease-in-out infinite;
+    transform-style:preserve-3d;
+}
+@keyframes globeFloat{0%,100%{transform:translateY(0) rotateX(5deg)}50%{transform:translateY(-14px) rotateX(-5deg)}}
+
+.globe{
+    width:100%;height:100%;
+    border-radius:50%;
+    position:relative;
+    background:radial-gradient(circle at 35% 30%,#2a5a9e 0%,#1a3a6e 30%,#0d1f3c 55%,#060e1f 75%,#020408 100%);
+    box-shadow:
+        0 0 40px rgba(41,98,255,.35),
+        0 0 80px rgba(41,98,255,.15),
+        0 0 120px rgba(41,98,255,.08),
+        inset -8px -8px 30px rgba(0,0,0,.6),
+        inset 4px 4px 20px rgba(100,160,255,.15);
+    overflow:hidden;
+    animation:globeRotate 25s linear infinite;
+}
+@keyframes globeRotate{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+/* Globe surface — continent-like patches */
+.globe-surface{
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    border-radius:50%;
+    background:
+        radial-gradient(ellipse 40% 30% at 25% 35%,rgba(34,120,60,.25) 0%,transparent 100%),
+        radial-gradient(ellipse 35% 25% at 65% 55%,rgba(34,120,60,.2) 0%,transparent 100%),
+        radial-gradient(ellipse 20% 20% at 50% 25%,rgba(34,120,60,.15) 0%,transparent 100%),
+        radial-gradient(ellipse 30% 15% at 30% 70%,rgba(34,120,60,.18) 0%,transparent 100%);
+}
+
+/* Globe grid */
+.globe-grid{
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    border-radius:50%;
+    background:
+        repeating-linear-gradient(0deg,transparent,transparent 16px,rgba(41,98,255,.08) 16px,rgba(41,98,255,.08) 17px),
+        repeating-linear-gradient(90deg,transparent,transparent 16px,rgba(41,98,255,.08) 16px,rgba(41,98,255,.08) 17px);
+}
+
+/* Atmosphere glow ring */
+.globe-atmosphere{
+    position:absolute;top:-8%;left:-8%;width:116%;height:116%;
+    border-radius:50%;
+    background:radial-gradient(circle,transparent 45%,rgba(41,98,255,.08) 55%,rgba(41,98,255,.02) 70%,transparent 80%);
+    animation:atmoPulse 4s ease-in-out infinite alternate;
+}
+@keyframes atmoPulse{0%{opacity:.5;transform:scale(1)}100%{opacity:1;transform:scale(1.04)}}
+
+/* ---- 3D Icons ON globe ---- */
+.globe-icons{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.g-icon3d{
+    position:absolute;
+    top:50%;left:50%;
+    transform-origin:0 0;
+    animation:gOrbit var(--dur) linear var(--delay) infinite;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));
+}
+.g-icon3d svg{
+    animation:gSpin var(--dur) linear var(--delay) infinite;
+}
+@keyframes gOrbit{
+    0%{transform:rotate(var(--start)) translateX(var(--r)) rotate(calc(-1 * var(--start))) scale(1)}
+    50%{transform:rotate(calc(var(--start) + 180deg)) translateX(calc(var(--r) - 15px)) rotate(calc(-1 * var(--start) - 180deg)) scale(.75)}
+    100%{transform:rotate(calc(var(--start) + 360deg)) translateX(var(--r)) rotate(calc(-1 * var(--start) - 360deg)) scale(1)}
+}
+@keyframes gSpin{
+    0%{transform:rotateY(0deg)}
+    100%{transform:rotateY(360deg)}
+}
+
+/* ---- Outer 3D Floating Objects ---- */
+.float-icons{position:absolute;top:50%;left:50%;width:0;height:0;pointer-events:none;perspective:600px}
+.f-3d{
+    position:absolute;
+    left:var(--x);top:var(--y);
+    animation:f3dFloat var(--dur) ease-in-out var(--delay) infinite;
+    filter:drop-shadow(0 4px 12px rgba(0,0,0,.5));
+    opacity:.85;
+    transition:opacity .3s,transform .3s;
+    transform-style:preserve-3d;
+}
+.f-3d:hover{opacity:1;transform:scale(1.2) translateZ(20px)!important}
+.f-3d svg{
+    animation:f3dSpin var(--dur) linear var(--delay) infinite;
+}
+@keyframes f3dFloat{
+    0%,100%{transform:translateY(0) rotateX(0deg) rotateZ(0deg)}
+    25%{transform:translateY(-20px) rotateX(8deg) rotateZ(3deg)}
+    50%{transform:translateY(-6px) rotateX(-4deg) rotateZ(-2deg)}
+    75%{transform:translateY(-24px) rotateX(6deg) rotateZ(2deg)}
+}
+@keyframes f3dSpin{
+    0%{transform:rotateY(0deg) rotateX(5deg)}
+    25%{transform:rotateY(15deg) rotateX(-3deg)}
+    50%{transform:rotateY(0deg) rotateX(5deg)}
+    75%{transform:rotateY(-15deg) rotateX(-3deg)}
+    100%{transform:rotateY(0deg) rotateX(5deg)}
+}
+
+/* ============================================
+   ORBITING TEXT
+   ============================================ */
+.orbit-ring{
+    position:absolute;
+    width:520px;height:520px;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+}
+.orbit-text{
+    position:absolute;
+    width:100%;height:100%;
+    animation:orbitSpin 20s linear infinite;
+    font-size:15px;
+    font-weight:900;
+    letter-spacing:5px;
+    text-transform:uppercase;
+}
+.orbit-text span{
+    position:absolute;
+    top:50%;left:50%;
+    transform-origin:0 0;
+    color:rgba(255,255,255,.85);
+    text-shadow:0 0 10px rgba(41,98,255,.6),0 0 20px rgba(41,98,255,.3);
+}
+.orbit-dot{color:#2962FF!important;font-size:10px!important}
+@keyframes orbitSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+/* ============================================
+   CENTER CONTENT
+   ============================================ */
+.center-content{
+    position:absolute;
+    text-align:center;
+    z-index:10;
+    pointer-events:none;
+}
+.hero-title{
+    font-size:48px;
+    font-weight:900;
+    letter-spacing:5px;
+    color:#fff;
+    text-shadow:0 0 30px rgba(41,98,255,.5),0 0 60px rgba(41,98,255,.2);
+    margin-bottom:6px;
+}
+.hero-title .accent{color:#2962FF}
+.hero-sub{
+    font-size:13px;
+    color:rgba(255,255,255,.45);
+    letter-spacing:6px;
+    text-transform:uppercase;
+    margin-bottom:26px;
+}
+.cta-btn{
+    pointer-events:all;
+    display:inline-block;
+    background:linear-gradient(135deg,#2962FF,#1a4fd6);
+    color:#fff;
+    padding:14px 42px;
+    border-radius:30px;
+    text-decoration:none;
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:2px;
+    border:1px solid rgba(255,255,255,.15);
+    cursor:pointer;
+    transition:all .3s;
+    box-shadow:0 0 30px rgba(41,98,255,.4),inset 0 1px 0 rgba(255,255,255,.15);
+}
+.cta-btn:hover{
+    transform:scale(1.06) translateY(-2px);
+    box-shadow:0 0 50px rgba(41,98,255,.6),inset 0 1px 0 rgba(255,255,255,.2);
+    background:linear-gradient(135deg,#3a73ff,#2962FF);
+}
+
+/* ============================================
+   BOTTOM CARDS
+   ============================================ */
+.bottom-cards{
+    position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+    display:flex;gap:14px;z-index:10;
+}
+.info-card{
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.07);
+    backdrop-filter:blur(8px);
+    padding:10px 18px;
+    border-radius:10px;
+    display:flex;align-items:center;gap:8px;
+    transition:all .3s;
+}
+.info-card:hover{
+    background:rgba(41,98,255,.12);
+    border-color:rgba(41,98,255,.25);
+    transform:translateY(-2px);
+}
+.card-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-blue{background:#2962FF;box-shadow:0 0 8px #2962FF}
+.dot-red{background:#ef4444;box-shadow:0 0 8px #ef4444}
+.dot-yellow{background:#f59e0b;box-shadow:0 0 8px #f59e0b}
+.dot-green{background:#22c55e;box-shadow:0 0 8px #22c55e}
+.card-label{color:rgba(255,255,255,.6);font-size:11px;font-weight:600;letter-spacing:1px}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media(max-width:768px){
+    .globe-scene{transform:translate(-50%,-50%) scale(.55)}
+    .hero-title{font-size:30px;letter-spacing:3px}
+    .orbit-ring{width:380px;height:380px}
+    .orbit-text span{font-size:12px}
+    .bottom-cards{flex-wrap:wrap;justify-content:center;gap:8px;padding:0 12px}
+    .info-card{padding:8px 12px}
+    .card-label{font-size:9px}
+    .f-3d svg{width:40px;height:40px}
+}
+@media(max-width:480px){
+    .globe-scene{transform:translate(-50%,-50%) scale(.4)}
+    .hero-title{font-size:22px;letter-spacing:2px}
+    .hero-sub{font-size:9px;letter-spacing:3px}
+    .cta-btn{padding:10px 28px;font-size:11px}
+    .bottom-cards{gap:6px}
+    .info-card{padding:6px 10px}
+    .f-3d svg{width:32px;height:32px}
+    .float-icons{transform:scale(.5)}
+}

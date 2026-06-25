@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Excel Liste Duzenle - Market Master</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#d1d4dc}
+.top{background:linear-gradient(135deg,#0d0d1a,#1a0a0a);border-bottom:3px solid #e94560;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+.top .logo{font-size:22px;font-weight:900;color:#e94560;text-decoration:none}
+.top .nav a{color:#666;text-decoration:none;font-size:12px;margin-left:14px}
+.top .nav a:hover{color:#e94560}
+.container{max-width:1100px;margin:0 auto;padding:20px}
+h1{font-size:20px;color:#fff;margin-bottom:4px}
+.sub{color:#555;font-size:12px;margin-bottom:16px}
+.toolbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.btn{padding:7px 18px;font-size:11px;font-weight:600;border:1px solid #1a1a2e;border-radius:4px;background:transparent;color:#555;cursor:pointer;transition:all .15s}
+.btn:hover{border-color:#444;color:#d1d4dc}
+.btn.green{border-color:#2ecc71;color:#2ecc71}
+.btn.green:hover{background:rgba(46,204,113,.15)}
+.btn.red{border-color:#e74c3c;color:#e74c3c}
+.btn.red:hover{background:rgba(231,76,60,.15)}
+.btn.primary{background:#e94560;color:#fff;border-color:#e94560}
+.btn.primary:hover{background:#c73851}
+.search{padding:7px 12px;font-size:11px;background:#111122;border:1px solid #1a1a2e;border-radius:4px;color:#d1d4dc;width:200px}
+.search::placeholder{color:#555}
+.cnt{color:#888;font-size:11px;margin-left:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;background:#111122;border-radius:8px;overflow:hidden}
+thead{background:#0d0d1a}
+th{padding:8px 10px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#555;border-bottom:1px solid #1a1a2e}
+td{padding:6px 8px;border-bottom:1px solid #0f0f1a}
+tr:hover{background:rgba(233,69,96,.03)}
+input[type=text],input[type=number]{background:#0a0a14;border:1px solid #1a1a2e;border-radius:3px;padding:4px 8px;color:#d1d4dc;font-size:12px;width:100%}
+input:focus{outline:none;border-color:#e94560}
+.name-cell{font-weight:600;color:#fff;white-space:nowrap}
+.lvl-cell{color:#f1c40f;font-weight:600;font-size:11px}
+.price-cell{font-family:monospace;font-weight:700;color:#2ecc71}
+.mode-cell{font-size:10px;padding:2px 8px;border-radius:3px;font-weight:600;display:inline-block}
+.mode-cell.auto{background:rgba(46,204,113,.12);color:#2ecc71}
+.mode-cell.manuel{background:rgba(233,69,96,.12);color:#e94560}
+.note-cell{color:#555;font-size:10px}
+.copy-btn{padding:2px 8px;font-size:10px;border:1px solid #1a1a2e;border-radius:3px;background:transparent;color:#555;cursor:pointer}
+.copy-btn:hover{border-color:#e94560;color:#e94560}
+.changed{background:rgba(233,69,96,.08)!important}
+.toast{position:fixed;bottom:20px;right:20px;background:#2ecc71;color:#fff;padding:10px 20px;border-radius:6px;font-size:12px;font-weight:600;display:none;z-index:999}
+.toast.error{background:#e74c3c}
+.del-btn{color:#e74c3c;cursor:pointer;font-size:14px}
+.del-btn:hover{color:#ff6b6b}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="logo" href="/">MARKET MASTER</a>
+  <div class="nav">
+    <a href="/fiyat-listeleri">Fiyat Listeleri</a>
+    <a href="/excel-liste">Duzenle</a>
+  </div>
+</div>
+
+<div class="container">
+  <h1>Excel Export Listesi Duzenle</h1>
+  <div class="sub">Fiyatlari duzenleyip kaydedebilirsiniz. Satir ekleyip kaldirabilirsiniz.</div>
+
+  <div class="toolbar">
+    <input class="search" id="searchBox" placeholder="Item ara..." oninput="filterTable()">
+    <button class="btn green" onclick="addItem()">+ YENI EKLE</button>
+    <button class="btn primary" onclick="saveAll()">KAYDET</button>
+    <button class="btn" onclick="copyAll()">TUMUNU KOPYALA</button>
+    <span class="cnt" id="itemCount">{{ items|length }} item</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:30px">#</th>
+        <th>Item</th>
+        <th style="width:60px">Seviye</th>
+        <th style="width:140px">Fiyat</th>
+        <th style="width:80px">Mod</th>
+        <th style="width:50px">Adet</th>
+        <th>Not</th>
+        <th style="width:60px">Islem</th>
+      </tr>
+    </thead>
+    <tbody id="itemBody">
+    {% for it in items %}
+      <tr data-idx="{{ it.idx }}" data-name="{{ it.name|lower }}">
+        <td style="color:#555;font-size:10px">{{ loop.index }}</td>
+        <td class="name-cell"><input type="text" value="{{ it.name }}" data-field="name"></td>
+        <td class="lvl-cell"><input type="text" value="{{ it.lvl }}" data-field="lvl" style="width:50px"></td>
+        <td class="price-cell"><input type="number" value="{{ it.price }}" data-field="price"></td>
+        <td><span class="mode-cell {{ it.mode|lower }}">{{ it.mode }}</span></td>
+        <td><input type="text" value="{{ it.count }}" data-field="count" style="width:40px"></td>
+        <td class="note-cell"><input type="text" value="{{ it.note }}" data-field="note"></td>
+        <td>
+          <span class="copy-btn" onclick="copyRow(this)" title="Kopyala">Kop</span>
+          <span class="del-btn" onclick="deleteRow(this)" title="Sil">&times;</span>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2000);
+}
+
+function filterTable() {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  let visible = 0;
+  document.querySelectorAll('#itemBody tr').forEach(row => {
+    const name = row.dataset.name || '';
+    const show = name.includes(q);
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  document.getElementById('itemCount').textContent = visible + ' item';
+}
+
+function copyRow(btn) {
+  const row = btn.closest('tr');
+  const inputs = row.querySelectorAll('input');
+  const name = inputs[0].value;
+  const lvl = inputs[1].value;
+  const price = inputs[2].value;
+  const count = inputs[4].value;
+  const note = inputs[5].value;
+  const line = name + '|' + lvl + '|' + price + '.0|Auto|' + count + '|' + note;
+  navigator.clipboard.writeText(line).then(() => showToast('Kopyalandi!'));
+}
+
+function deleteRow(btn) {
+  if (!confirm('Bu itemi silmek istediginize emin misiniz?')) return;
+  btn.closest('tr').remove();
+  reindex();
+  showToast('Silindi');
+}
+
+function reindex() {
+  document.querySelectorAll('#itemBody tr').forEach((row, i) => {
+    row.querySelector('td').textContent = i + 1;
+  });
+  document.getElementById('itemCount').textContent = document.querySelectorAll('#itemBody tr').length + ' item';
+}
+
+function addItem() {
+  const tbody = document.getElementById('itemBody');
+  const idx = tbody.querySelectorAll('tr').length;
+  const tr = document.createElement('tr');
+  tr.dataset.name = '';
+  tr.innerHTML = `
+    <td style="color:#555;font-size:10px">${idx + 1}</td>
+    <td class="name-cell"><input type="text" value="" data-field="name" placeholder="Item adi"></td>
+    <td class="lvl-cell"><input type="text" value="+0" data-field="lvl" style="width:50px"></td>
+    <td class="price-cell"><input type="number" value="0" data-field="price"></td>
+    <td><span class="mode-cell auto">Auto</span></td>
+    <td><input type="text" value="1" data-field="count" style="width:40px"></td>
+    <td class="note-cell"><input type="text" value="" data-field="note"></td>
+    <td>
+      <span class="copy-btn" onclick="copyRow(this)" title="Kopyala">Kop</span>
+      <span class="del-btn" onclick="deleteRow(this)" title="Sil">&times;</span>
+    </td>
+  `;
+  tr.classList.add('changed');
+  tbody.appendChild(tr);
+  tr.querySelector('input').focus();
+  reindex();
+}
+
+function saveAll() {
+  const items = [];
+  document.querySelectorAll('#itemBody tr').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    items.push({
+      name: inputs[0].value,
+      lvl: inputs[1].value,
+      price: inputs[2].value,
+      mode: row.querySelector('.mode-cell').textContent,
+      count: inputs[4].value,
+      note: inputs[5].value,
+    });
+  });
+  fetch('/api/excel-liste/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({items: items})
+  }).then(r => r.json()).then(d => {
+    if (d.ok) showToast(d.saved + ' item kaydedildi!');
+    else showToast('Hata: ' + d.error, true);
+  }).catch(e => showToast('Kayit hatasi!', true));
+}
+
+function copyAll() {
+  const lines = [];
+  document.querySelectorAll('#itemBody tr').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    lines.push(inputs[0].value + '|' + inputs[1].value + '|' + inputs[2].value + '.0|Auto|' + inputs[4].value + '|' + inputs[5].value);
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(() => showToast('Tumu kopyalandi!'));
+}
+
+document.querySelectorAll('#itemBody tr input').forEach(inp => {
+  inp.addEventListener('change', () => inp.closest('tr').classList.add('changed'));
+});
+</script>
+</body>
+</html>

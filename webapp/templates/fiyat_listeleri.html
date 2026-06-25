@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fiyat Listeleri - Market Master</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#d1d4dc}
+.top{background:linear-gradient(135deg,#0d0d1a,#1a0a0a);border-bottom:3px solid #e94560;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+.top .logo{font-size:22px;font-weight:900;color:#e94560;text-decoration:none}
+.top .nav a{color:#666;text-decoration:none;font-size:12px;margin-left:14px}
+.top .nav a:hover{color:#e94560}
+.container{max-width:900px;margin:0 auto;padding:20px}
+h1{font-size:20px;color:#fff;margin-bottom:4px}
+.sub{color:#555;font-size:12px;margin-bottom:20px}
+.stats-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.stat-box{background:#111122;border:1px solid #1a1a2e;border-radius:8px;padding:10px 16px;text-align:center}
+.stat-box .l{color:#555;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+.stat-box .v{font-size:18px;font-weight:700;margin-top:2px}
+.stat-box .v.green{color:#2ecc71}
+.stat-box .v.red{color:#e74c3c}
+.stat-box .v.gold{color:#f1c40f}
+.filter-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.filter-btn{padding:5px 14px;font-size:10px;font-weight:600;border:1px solid #1a1a2e;border-radius:4px;background:transparent;color:#555;cursor:pointer;transition:all .15s}
+.filter-btn:hover{border-color:#444;color:#d1d4dc}
+.filter-btn.active{border-color:#e94560;color:#e94560;background:rgba(233,69,96,.1)}
+table{width:100%;border-collapse:collapse;font-size:12px;background:#111122;border-radius:8px;overflow:hidden}
+thead{background:#0d0d1a}
+th{padding:10px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#555;border-bottom:1px solid #1a1a2e}
+td{padding:9px 12px;border-bottom:1px solid #0f0f1a}
+tr:hover{background:rgba(233,69,96,.03)}
+.item-name{color:#fff;font-weight:600}
+.item-lvl{color:#f1c40f;font-weight:600;font-size:11px}
+.item-price{font-family:monospace;font-weight:700;color:#2ecc71}
+.item-mode{font-size:10px;padding:2px 8px;border-radius:3px;font-weight:600}
+.item-mode.auto{background:rgba(46,204,113,.12);color:#2ecc71}
+.item-mode.manuel{background:rgba(233,69,96,.12);color:#e94560}
+.item-note{color:#555;font-size:10px}
+.copy-row{cursor:pointer;transition:background .15s}
+.copy-row:active{background:rgba(233,69,96,.1)}
+.toast{position:fixed;bottom:20px;right:20px;background:#2ecc71;color:#fff;padding:10px 20px;border-radius:6px;font-size:12px;font-weight:600;display:none;z-index:999}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="logo" href="/">MARKET MASTER</a>
+  <div class="nav">
+    <a href="/fiyat-listeleri">Fiyat Listeleri</a>
+    <a href="/liste">Item Listesi</a>
+  </div>
+</div>
+
+<div class="container">
+  <h1>Fiyat Listeleri</h1>
+  <div class="sub">Satira tiklayarak kopyalayabilirsiniz</div>
+
+  <div class="stats-bar">
+    <div class="stat-box"><div class="l">Toplam Item</div><div class="v gold">{{ items|length }}</div></div>
+    <div class="stat-box"><div class="l">Otomatik</div><div class="v green">{{ items|selectattr('mode','equalto','Auto')|list|length }}</div></div>
+    <div class="stat-box"><div class="l">Manuel</div><div class="v red">{{ items|selectattr('mode','equalto','Manuel')|list|length }}</div></div>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="filterItems('all', this)">Tumu</button>
+    <button class="filter-btn" onclick="filterItems('Auto', this)">Otomatik</button>
+    <button class="filter-btn" onclick="filterItems('Manuel', this)">Manuel</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Item</th>
+        <th>Seviye</th>
+        <th>Fiyat</th>
+        <th>Mod</th>
+        <th>Not</th>
+      </tr>
+    </thead>
+    <tbody id="itemBody">
+    {% for it in items %}
+      <tr class="copy-row" data-mode="{{ it.mode }}" onclick="copyItem('{{ it.name }}|{{ it.lvl }}|{{ it.price }}.0|{{ it.mode }}|{{ it.count }}|{{ it.note }}')">
+        <td style="color:#555">{{ loop.index }}</td>
+        <td class="item-name">{{ it.name }}</td>
+        <td class="item-lvl">{{ it.lvl }}</td>
+        <td class="item-price">{{ "{:,}".format(it.price) }}</td>
+        <td><span class="item-mode {{ it.mode|lower }}">{{ it.mode }}</span></td>
+        <td class="item-note">{{ it.note }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="toast" id="toast">Kopyalandi!</div>
+
+<script>
+function filterItems(mode, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#itemBody tr').forEach(row => {
+    if (mode === 'all' || row.dataset.mode === mode) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+function copyItem(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const toast = document.getElementById('toast');
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.display = 'none', 1500);
+  });
+}
+</script>
+</body>
+</html>

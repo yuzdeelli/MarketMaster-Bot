@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Item Arama - Market Master</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#d1d4dc}
+.top{background:linear-gradient(135deg,#0d0d1a,#1a0a0a);border-bottom:3px solid #e94560;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+.top .logo{font-size:22px;font-weight:900;color:#e94560;text-decoration:none}
+.top .nav a{color:#666;text-decoration:none;font-size:12px;margin-left:14px}
+.top .nav a:hover{color:#e94560}
+.top .nav a.active{color:#e94560}
+.container{max-width:1400px;margin:0 auto;padding:20px}
+h1{font-size:20px;color:#fff;margin-bottom:4px}
+.sub{color:#555;font-size:12px;margin-bottom:20px}
+
+.search-box{background:#111122;border:1px solid #1a1a2e;border-radius:8px;padding:20px;margin-bottom:20px}
+.search-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.search-group{display:flex;flex-direction:column;gap:4px}
+.search-group label{font-size:10px;color:#888;text-transform:uppercase}
+.search-group input,.search-group select{background:#0a0a14;border:1px solid #1a1a2e;border-radius:6px;padding:10px 14px;color:#fff;font-size:14px;min-width:200px}
+.search-group input:focus,.search-group select:focus{outline:none;border-color:#e94560}
+.search-btn{background:#e94560;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.search-btn:hover{background:#ff6b81;transform:translateY(-1px)}
+
+.lvl-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.lvl-tag{background:#0a0a14;border:1px solid #1a1a2e;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all .2s}
+.lvl-tag:hover{border-color:#e94560;color:#e94560}
+.lvl-tag.active{background:rgba(233,69,96,.15);border-color:#e94560;color:#e94560}
+
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:20px}
+.result-card{background:#111122;border:1px solid #1a1a2e;border-radius:8px;padding:16px;cursor:pointer;transition:all .2s}
+.result-card:hover{border-color:#e94560;transform:translateY(-2px)}
+.result-card .name{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px}
+.result-card .lvl{font-size:11px;color:#f1c40f;margin-bottom:8px}
+.result-card .stats{display:flex;gap:16px;font-size:12px}
+.result-card .stat{display:flex;flex-direction:column;gap:2px}
+.result-card .stat .lbl{font-size:9px;color:#888;text-transform:uppercase}
+.result-card .stat .val{font-family:monospace;color:#2ecc71}
+
+.sidebar-section{background:#111122;border:1px solid #1a1a2e;border-radius:8px;padding:16px;margin-bottom:16px}
+.sidebar-title{font-size:12px;font-weight:700;color:#e94560;margin-bottom:12px;text-transform:uppercase}
+.sidebar-item{padding:6px 0;border-bottom:1px solid #0f0f1a;font-size:12px;cursor:pointer;display:flex;justify-content:space-between}
+.sidebar-item:hover{color:#e94560}
+.sidebar-item .count{color:#888;font-size:10px}
+
+.layout{display:grid;grid-template-columns:1fr 280px;gap:20px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+
+.empty{text-align:center;padding:40px;color:#555;font-size:14px}
+.add-item-btn{background:#2ecc71;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.add-item-btn:hover{background:#27ae60;transform:translateY(-2px)}
+.add-item-btn:disabled{background:#555;cursor:not-allowed}
+.added-ok{color:#2ecc71;font-weight:600}
+.added-err{color:#e74c3c}
+.result-card-wrapper{position:relative}
+.report-btn{position:absolute;top:8px;right:8px;background:rgba(231,76,60,.2);color:#e74c3c;border:1px solid #e74c3c;border-radius:4px;padding:3px 8px;font-size:9px;cursor:pointer;transition:all .2s;opacity:0}
+.result-card-wrapper:hover .report-btn{opacity:1}
+.report-btn:hover{background:#e74c3c;color:#fff}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="logo" href="/">MARKET MASTER</a>
+  <div class="nav">
+    <a href="/arama" class="active">Arama</a>
+  </div>
+</div>
+
+<div class="container">
+  <h1>Item Arama</h1>
+  <div class="sub">Item adi ve seviye ile arama yapin, arama gecmisiniz kaydedilir</div>
+
+  <div class="search-box">
+    <form action="/arama" method="GET">
+      <div class="search-row">
+        <div class="search-group" style="flex:1">
+          <label>Item Adi</label>
+          <input type="text" name="q" id="searchInput" value="{{ query }}" placeholder="Item adi yazin..." autocomplete="off">
+        </div>
+        <div class="search-group">
+          <label>Sunucu</label>
+          <select name="server" id="serverSelect">
+            <option value="">Tum Sunucular</option>
+            {% for s in all_servers %}
+            <option value="{{ s }}" {{ 'selected' if server == s }}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="search-btn">Ara</button>
+      </div>
+      
+      <div class="lvl-tags" id="lvlTags">
+        <span class="lvl-tag {{ 'active' if not lvl }}" onclick="setLvl('')">Tumu</span>
+        {% for l in ['+0','+1','+2','+3','+4','+5','+6','+7','+8','+9','+10'] %}
+        <span class="lvl-tag {{ 'active' if lvl == l }}" onclick="setLvl('{{ l }}')">{{ l }}</span>
+        {% endfor %}
+        {% for l in ['reb1','reb2','reb3','reb21'] %}
+        <span class="lvl-tag {{ 'active' if lvl == l }}" onclick="setLvl('{{ l }}')">{{ l }}</span>
+        {% endfor %}
+      </div>
+      <input type="hidden" name="lvl" id="lvlInput" value="{{ lvl }}">
+    </form>
+  </div>
+
+  <div class="layout">
+    <div>
+      {% if query %}
+        <h2 style="font-size:14px;color:#888;margin-bottom:12px"> "{{ query }}" icin {{ results|length }} sonuc bulundu</h2>
+      {% endif %}
+      
+      {% if results %}
+      <div class="results-grid">
+        {% for r in results %}
+        <div class="result-card-wrapper">
+          <a href="/item/{{ r.item|urlencode }}?lvl={{ r.lvl|urlencode }}" style="text-decoration:none">
+            <div class="result-card">
+              <div class="name">{{ r.item }}</div>
+              <div class="lvl">Seviye: {{ r.lvl or '+0' }}</div>
+              {% if r.stats and r.stats.sell %}
+              <div class="stats">
+                <div class="stat">
+                  <span class="lbl">Satis Medyan</span>
+                  <span class="val">{{ "{:,}".format(r.stats.sell.median|int) }}</span>
+                </div>
+                <div class="stat">
+                  <span class="lbl">Min-Max</span>
+                  <span class="val">{{ "{:,}".format(r.stats.sell.min|int) }} - {{ "{:,}".format(r.stats.sell.max|int) }}</span>
+                </div>
+              </div>
+              {% else %}
+              <div style="color:#555;font-size:11px">Fiyat verisi yok</div>
+              {% endif %}
+            </div>
+          </a>
+          <button class="report-btn" onclick="reportItem('{{ r.item|e }}', event)">Raporla</button>
+        </div>
+        {% endfor %}
+      </div>
+      {% elif query %}
+      <div class="empty" id="notFoundBox">
+        <div style="font-size:32px;margin-bottom:16px"></div>
+        <div style="margin-bottom:16px">"{{ query }}" bulunamadi</div>
+        <div style="font-size:12px;color:#888;margin-bottom:16px">Bu itemi veritabanina eklemek ister misiniz?</div>
+        <button class="add-item-btn" onclick="addItem('{{ query|e }}')"> + Item Ekle</button>
+        <div id="addResult" style="margin-top:12px;font-size:12px"></div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Populer Aramalar</div>
+        {% for p in popular %}
+        <div class="sidebar-item" onclick="location.href='/arama?q={{ p.item|urlencode }}&lvl={{ p.lvl|urlencode }}'">
+          <span>{{ p.item }} {{ p.lvl }}</span>
+          <span class="count">{{ p.count }}x</span>
+        </div>
+        {% endfor %}
+        {% if not popular %}
+        <div style="color:#555;font-size:11px">Henuz arama yok</div>
+        {% endif %}
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-title">Son Aramalarim</div>
+        {% for h in history %}
+        <div class="sidebar-item" onclick="location.href='/arama?q={{ h.item|urlencode }}&lvl={{ h.lvl|urlencode }}'">
+          <span>{{ h.item }} {{ h.lvl }}</span>
+          <span class="count">{{ h.timestamp[:10] }}</span>
+        </div>
+        {% endfor %}
+        {% if not history %}
+        <div style="color:#555;font-size:11px">Henuz arama yok</div>
+        {% endif %}
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Son Eklenen Itemler</div>
+        <div id="recentItems">Yukleniyor...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setLvl(lvl) {
+  document.getElementById('lvlInput').value = lvl;
+  document.querySelectorAll('.lvl-tag').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.querySelector('form').submit();
+}
+
+function addItem(name) {
+  const btn = event.target;
+  const resultDiv = document.getElementById('addResult');
+  btn.disabled = true;
+  btn.textContent = 'Ekleniyor...';
+  
+  fetch('/api/items/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      resultDiv.innerHTML = '<span class="added-ok">Item eklendi! Simdi taranabilir.</span>';
+      btn.textContent = 'Eklendi';
+    } else {
+      resultDiv.innerHTML = '<span class="added-err">' + (data.error || 'Hata') + '</span>';
+      btn.disabled = false;
+      btn.textContent = ' + Item Ekle';
+    }
+  })
+  .catch(err => {
+    resultDiv.innerHTML = '<span class="added-err">Hata: ' + err.message + '</span>';
+    btn.disabled = false;
+    btn.textContent = ' + Item Ekle';
+  });
+}
+
+function reportItem(name, e) {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  if (!confirm('"' + name + '" itemini raporlamak istediginize emin misiniz?\n\nYanlis veya hatali item ismi ise raporlayin.')) {
+    return;
+  }
+  
+  fetch('/api/items/report', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name, reason: 'Kullanici raporu'})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      alert('Raporunuz alindi! Tesekkurler.');
+    } else {
+      alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
+    }
+  })
+  .catch(err => {
+    alert('Hata: ' + err.message);
+  });
+}
+
+const allItems = {{ all_items|tojson }};
+const input = document.getElementById('searchInput');
+const datalist = document.createElement('datalist');
+datalist.id = 'itemList';
+allItems.forEach(item => {
+  const opt = document.createElement('option');
+  opt.value = item;
+  datalist.appendChild(opt);
+});
+document.body.appendChild(datalist);
+input.setAttribute('list', 'itemList');
+
+// Son eklenen itemlari yukle
+fetch('/api/items/recent')
+  .then(r => r.json())
+  .then(data => {
+    const container = document.getElementById('recentItems');
+    if (data.items && data.items.length > 0) {
+      container.innerHTML = data.items.slice(0, 10).map(item => 
+        '<div class="sidebar-item" onclick="location.href=\'/arama?q=' + encodeURIComponent(item.name) + '\'">' +
+        '<span>' + item.name + '</span>' +
+        '<span class="count">' + (item.added_at ? item.added_at.slice(0, 10) : '') + '</span>' +
+        '</div>'
+      ).join('');
+    } else {
+      container.innerHTML = '<div style="color:#555;font-size:11px">Henuz item eklenmedi</div>';
+    }
+  })
+  .catch(() => {
+    document.getElementById('recentItems').innerHTML = '<div style="color:#555;font-size:11px">Yuklenemedi</div>';
+  });
+</script>
+</body>
+</html>

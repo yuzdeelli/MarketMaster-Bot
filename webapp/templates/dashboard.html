@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Market Master - Dashboard</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;background:#0a0a0a;color:#e0e0e0;min-height:100vh;overflow-x:hidden}
+
+/* ---- NAVBAR ---- */
+.tv-navbar{display:flex;justify-content:space-between;align-items:center;height:52px;padding:0 24px;background:#111;border-bottom:1px solid #1a1a1a;position:sticky;top:0;z-index:100}
+.tv-navbar .nav-left,.tv-navbar .nav-right{display:flex;align-items:center;gap:14px}
+.tv-navbar .nav-center{flex:1;display:flex;justify-content:center;padding:0 20px}
+.tv-logo{font-weight:800;color:#fff;text-decoration:none;font-size:16px;letter-spacing:-0.5px}
+.tv-logo:hover{color:#2962FF}
+.server-select-box select{background:#1a1a1a;border:1px solid #333;padding:5px 10px;border-radius:6px;font-weight:600;color:#ccc;cursor:pointer;font-size:12px}
+.nav-link{padding:5px 12px;font-size:12px;font-weight:600;color:#777;text-decoration:none;border-radius:6px;transition:all .15s}
+.nav-link:hover{color:#fff;background:rgba(255,255,255,.06)}
+.nav-link.active{color:#2962FF;background:rgba(41,98,255,.1)}
+.tv-search-wrapper{position:relative;width:280px}
+.tv-search-wrapper input{width:100%;background:#1a1a1a;border:1px solid #333;padding:7px 10px 7px 34px;border-radius:6px;font-size:13px;color:#ddd}
+.tv-search-wrapper input:focus{border-color:#2962FF;outline:none}
+.tv-search-wrapper .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#666;pointer-events:none}
+#searchDropdown{display:none;position:absolute;top:100%;left:0;right:0;background:#1a1a1a;border:1px solid #333;border-radius:0 0 8px 8px;max-height:320px;overflow-y:auto;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+#searchDropdown.open{display:block}
+.sd-item{padding:9px 14px;cursor:pointer;color:#ccc;font-size:13px;border-bottom:1px solid #222}
+.sd-item:hover,.sd-item.active{background:#2962FF;color:#fff}
+.sd-item:last-child{border-bottom:none}
+.sd-hint{text-align:center;color:#555;font-size:11px;padding:12px}
+.btn-login-text{color:#ccc;text-decoration:none;font-size:13px;font-weight:600}
+.btn-login-text:hover{color:#2962FF}
+.btn-register-blue{background:#2962FF;color:#fff;padding:6px 14px;border-radius:16px;text-decoration:none;font-size:13px;font-weight:600}
+.btn-logout{color:#f23645;text-decoration:none;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer}
+.welcome-user{font-size:12px;color:#aaa;font-weight:500}
+
+/* ---- SEARCH MODAL ---- */
+.search-backdrop{display:none;position:fixed;z-index:3000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);justify-content:center;padding-top:80px}
+.search-backdrop.active{display:flex}
+.search-modal-box{background:#1a1a1a;width:540px;max-height:400px;border-radius:10px;border:1px solid #333;box-shadow:0 20px 60px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden}
+.search-modal-header{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #222;position:relative}
+#modalSearchInput{width:100%;border:none;font-size:15px;color:#ddd;padding-left:26px;outline:none;background:transparent}
+.search-icon-modal{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#666;pointer-events:none}
+.esc-badge{background:#222;border:1px solid #444;color:#888;padding:2px 5px;border-radius:3px;font-size:9px;font-weight:bold}
+.search-results-body{flex:1;overflow-y:auto;padding:6px 0}
+.search-placeholder-msg{text-align:center;color:#666;font-size:12px;padding:28px}
+.search-res-item{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;cursor:pointer;text-decoration:none;color:#ccc;font-size:13px;transition:background .15s}
+.search-res-item:hover{background:#222}
+
+/* ---- LAYOUT ---- */
+.main-layout{display:flex;max-width:100%;min-height:calc(100vh - 52px)}
+.main-content{flex:1;padding:16px 20px;min-width:0}
+
+/* ---- SIDEBAR ---- */
+.sidebar{
+  width:280px;
+  flex-shrink:0;
+  padding:0;
+  background:linear-gradient(180deg,#0f0f0f 0%,#0a0a0a 100%);
+  border-left:1px solid #1a1a1a;
+  display:flex;flex-direction:column;
+  gap:0;
+  overflow-y:auto;
+  height:calc(100vh - 52px);
+  opacity:.05;
+  transition:opacity .1s ease;
+}
+.sidebar.visible{opacity:1;transition:opacity .05s ease}
+.sidebar.fading{opacity:.05;transition:opacity 5s ease}
+.sidebar-header{padding:20px 16px 12px;border-bottom:1px solid #1a1a1a}
+
+/* ---- USER CARD ---- */
+.user-card{position:relative;padding:20px 16px;text-align:center}
+.user-card::before{content:'';position:absolute;top:0;left:0;right:0;height:60px;background:linear-gradient(135deg,rgba(41,98,255,.15),rgba(168,85,247,.1));border-radius:0 0 20px 20px}
+.user-avatar-wrap{position:relative;width:64px;height:64px;margin:0 auto 10px}
+.user-avatar-ring{position:absolute;inset:-3px;border-radius:50%;background:conic-gradient(#2962FF,#a855f7,#ec4899,#2962FF);animation:ringSpin 4s linear infinite}
+@keyframes ringSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.user-avatar-inner{position:absolute;inset:0;border-radius:50%;background:#111;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff}
+.user-card-name{font-size:15px;font-weight:700;color:#fff;margin-bottom:2px}
+.user-card-email{font-size:11px;color:#555}
+.user-card-badge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:12px;font-size:9px;font-weight:700;letter-spacing:1px;background:rgba(41,98,255,.15);color:#2962FF;border:1px solid rgba(41,98,255,.2)}
+
+/* Not logged in */
+.user-guest{padding:24px 16px;text-align:center}
+.user-guest .guest-icon{width:48px;height:48px;border-radius:50%;background:#1a1a1a;border:1px solid #333;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:20px;color:#555}
+.user-guest .guest-text{font-size:13px;color:#888;margin-bottom:8px}
+.user-guest a{color:#2962FF;font-size:12px;text-decoration:none;font-weight:600}
+
+/* ---- SIDEBAR SECTIONS ---- */
+.sidebar-section{padding:14px 16px;border-bottom:1px solid #1a1a1a}
+.sidebar-section:last-child{border-bottom:none}
+.section-label{font-size:10px;font-weight:700;color:#444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.section-label::after{content:'';flex:1;height:1px;background:#1a1a1a}
+
+/* ---- ALARMS ---- */
+.alarm-list{display:flex;flex-direction:column;gap:6px}
+.alarm-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;
+  background:#141414;
+  border-radius:8px;
+  border:1px solid #1a1a1a;
+  position:relative;
+  transition:all .15s;
+}
+.alarm-item:hover{border-color:#333;background:#181818}
+.alarm-item::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:1px}
+.alarm-item.hit::before{background:#f23645;box-shadow:0 0 8px rgba(242,54,69,.4)}
+.alarm-item.waiting::before{background:#089981;box-shadow:0 0 8px rgba(8,153,129,.4)}
+.alarm-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.alarm-dot.hit{background:#f23645;box-shadow:0 0 8px rgba(242,54,69,.5)}
+.alarm-dot.waiting{background:#089981;box-shadow:0 0 8px rgba(8,153,129,.5)}
+.alarm-info{flex:1;min-width:0}
+.alarm-name{font-size:12px;font-weight:600;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alarm-target{font-size:10px;color:#555;margin-top:2px}
+.alarm-delete{background:none;border:none;color:#333;cursor:pointer;font-size:11px;padding:4px;border-radius:4px;transition:all .15s}
+.alarm-delete:hover{color:#f23645;background:rgba(242,54,69,.1)}
+
+/* ---- STATS ---- */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat-card{padding:10px;background:#141414;border:1px solid #1a1a1a;border-radius:8px;text-align:center;transition:border-color .15s}
+.stat-card:hover{border-color:#333}
+.stat-icon{width:8px;height:8px;border-radius:50%;margin:0 auto 6px}
+.stat-value{font-size:16px;font-weight:800;color:#fff;line-height:1}
+.stat-label{font-size:9px;color:#555;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px}
+
+.no-data{text-align:center;color:#333;font-size:11px;padding:16px;font-style:italic}
+
+/* ---- SECTION TITLE (main content) ---- */
+.section-title{font-size:12px;font-weight:700;color:#555;letter-spacing:1.5px;text-transform:uppercase;margin:12px 0 12px;padding-bottom:6px;border-bottom:1px solid #1a1a1a}
+
+/* ---- TABS ---- */
+.tab-bar{display:flex;gap:4px;margin-bottom:12px;padding-left:30%}
+.tab-btn{padding:8px 20px;border-radius:6px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:0.5px}
+.tab-btn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#fff}
+.tab-btn.active{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.25);color:#fff}
+
+/* ---- CARDS GRID 4 COL ---- */
+.top-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+
+/* ---- ITEM CARD ---- */
+.item-card{
+  background:#111;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;
+  padding:12px;
+  cursor:pointer;
+  transition:all .15s ease;
+  display:flex;flex-direction:column;gap:6px;
+}
+.item-card:hover{
+  border-color:rgba(255,255,255,.25);
+  background:#161616;
+  transform:translateY(-1px);
+  box-shadow:0 4px 20px rgba(0,0,0,.3);
+}
+.card-logo{width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;color:#fff;flex-shrink:0}
+.card-top{display:flex;align-items:center;gap:8px}
+.card-info{flex:1;min-width:0}
+.card-name{font-size:11px;font-weight:700;color:#e0e0e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-lvl{font-size:9px;color:#555;font-weight:600;margin-top:1px}
+.card-rank{font-size:16px;font-weight:800;color:#222;flex-shrink:0}
+.card-badge{display:inline-block;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:0.5px}
+.badge-active{background:rgba(8,153,129,.12);color:#089981}
+.badge-passive{background:rgba(242,54,69,.1);color:#f23645}
+.card-price{font-size:12px;font-weight:700;color:#fff}
+.card-price span{font-size:9px;color:#444;font-weight:500;margin-left:3px}
+.card-sparkline{height:24px;margin-top:2px}
+
+.footer{text-align:center;padding:16px;color:#222;font-size:10px;border-top:1px solid #111;margin-top:16px}
+
+@media(max-width:1200px){.top-grid{grid-template-columns:repeat(3,1fr)}.sidebar{width:240px}}
+@media(max-width:900px){.top-grid{grid-template-columns:repeat(2,1fr)}.sidebar{display:none}}
+@media(max-width:600px){.top-grid{grid-template-columns:1fr}.main-content{padding:12px}}
+
+/* ---- TICKER ---- */
+.ticker-wrap{width:100%;overflow:hidden;background:linear-gradient(90deg,#0a0a14,#1a0a0a,#0a0a14);border-bottom:1px solid #e94560;padding:8px 0;position:relative}
+.ticker{display:inline-block;white-space:nowrap;animation:tickerScroll 30s linear infinite}
+.ticker-item{color:#e94560;font-size:13px;font-weight:700;font-family:'Segoe UI',monospace;letter-spacing:0.5px}
+.ticker-sep{color:#333;margin:0 16px;font-size:12px}
+@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ---- AD BANNER ---- */
+.ad-banner-wrap{display:flex;justify-content:center;padding:12px 20px 0}
+.ad-banner{display:block;max-width:728px;width:100%;border-radius:8px;overflow:hidden;border:1px solid #1a1a1a;opacity:.05;transition:opacity .3s;text-decoration:none}
+.ad-banner:hover{opacity:1}
+.ad-banner img{display:block;width:100%;height:auto}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="tv-navbar">
+    <div class="nav-left">
+        <a href="/dashboard" class="tv-logo">MARKET MASTER</a>
+        <div class="server-select-box">
+            <select id="globalServerSelect" onchange="window.location.href='/dashboard?server='+this.value">
+                <option value="ZERO" {{ 'selected' if current_server == 'ZERO' }}>ZERO</option>
+                <option value="PANDORA" {{ 'selected' if current_server == 'PANDORA' }}>PANDORA</option>
+                <option value="AGARTHA" {{ 'selected' if current_server == 'AGARTHA' }}>AGARTHA</option>
+                <option value="FELIS" {{ 'selected' if current_server == 'FELIS' }}>FELIS</option>
+                <option value="DESTAN" {{ 'selected' if current_server == 'DESTAN' }}>DESTAN</option>
+                <option value="MINARK" {{ 'selected' if current_server == 'MINARK' }}>MINARK</option>
+                <option value="DRYADS" {{ 'selected' if current_server == 'DRYADS' }}>DRYADS</option>
+                <option value="OREADS" {{ 'selected' if current_server == 'OREADS' }}>OREADS</option>
+            </select>
+        </div>
+    </div>
+    <div class="nav-center">
+        <div class="tv-search-wrapper">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="searchInput" placeholder="Eşya Ara..." autocomplete="off" />
+            <div id="searchDropdown"></div>
+        </div>
+    </div>
+    <div class="nav-right">
+        <a href="/dashboard" class="nav-link active">Dashboard</a>
+        <a href="/endeks" class="nav-link">Endeks</a>
+    </div>
+</nav>
+
+<!-- AD BANNER -->
+<div class="ad-banner-wrap">
+  <a href="#" target="_blank" class="ad-banner">
+    <img src="{{ url_for('static', filename='img/ad-banner.svg') }}" alt="Reklam" onerror="this.parentElement.style.display='none'">
+  </a>
+</div>
+
+<!-- SEARCH BACKDROP -->
+<div id="searchBackdrop" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:5000" onclick="document.getElementById('searchBackdrop').style.display='none'"></div>
+
+<!-- TICKER BANNER -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    {% for t in ticker_items %}
+    <span class="ticker-item">Buy {{ t.name }} {{ '{:,}'.format(t.price) }}</span>
+    <span class="ticker-sep">/</span>
+    {% endfor %}
+    {% for t in ticker_items %}
+    <span class="ticker-item">Buy {{ t.name }} {{ '{:,}'.format(t.price) }}</span>
+    <span class="ticker-sep">/</span>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main-layout">
+
+  <!-- LEFT: Cards -->
+  <div class="main-content">
+    <div class="tab-bar">
+      <button class="tab-btn" onclick="switchTab('top50')">Top 50</button>
+      <button class="tab-btn" onclick="switchTab('high8')">Top 50 +8 / Rev+5</button>
+      <button class="tab-btn" onclick="switchTab('mid7')">Top 50 +7</button>
+      <button class="tab-btn" onclick="switchTab('vol')">Firsat / Populer</button>
+    </div>
+    <div class="top-grid" id="topGrid"></div>
+  </div>
+
+  <!-- RIGHT: Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="section-label">Fiyat Alarmları</div>
+      <div class="alarm-list" id="alarmList">
+        <div class="no-data">Alarm bulunmuyor</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">İstatistikler</div>
+      <div class="stat-grid" id="statGrid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#2962FF;box-shadow:0 0 8px rgba(41,98,255,.4)"></div>
+          <div class="stat-value" id="statTotal">-</div>
+          <div class="stat-label">Toplam Eşya</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#089981;box-shadow:0 0 8px rgba(8,153,129,.4)"></div>
+          <div class="stat-value" id="statActive">-</div>
+          <div class="stat-label">Aktif İlan</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.4)"></div>
+          <div class="stat-value" id="statPassive">-</div>
+          <div class="stat-label">Pasif İlan</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#a855f7;box-shadow:0 0 8px rgba(168,85,247,.4)"></div>
+          <div class="stat-value" style="font-size:11px">TOP 50</div>
+          <div class="stat-label">{{ current_server or 'Tümü' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">Market Master v3.0 &copy; 2026</div>
+
+<script>
+const COLORS=['#e94560','#2962FF','#089981','#f59e0b','#a855f7','#ef4444','#06b6d4','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#10b981','#e11d48','#0ea5e9','#d946ef','#84cc16','#f43f5e','#6d28d9','#059669'];
+function getItemColor(n){var h=0;for(var i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return COLORS[Math.abs(h)%COLORS.length]}
+function getItemInitial(n){return n.split(' ').map(function(w){return w[0]}).join('').substring(0,2).toUpperCase()}
+
+// ===== SEARCH =====
+(function(){
+  var input=document.getElementById('searchInput');
+  var dd=document.getElementById('searchDropdown');
+  if(!input||!dd)return;
+  var timer=null,openIdx=-1;
+
+  input.addEventListener('input',function(){
+    clearTimeout(timer);
+    var q=this.value.trim();
+    if(q.length<1){dd.classList.remove('open');dd.innerHTML='';return}
+    timer=setTimeout(function(){
+      fetch('/api/autocomplete?q='+encodeURIComponent(q))
+        .then(function(r){return r.json()})
+        .then(function(d){
+          if(!d.items||d.items.length===0){dd.innerHTML='<div class="sd-hint">Sonuc bulunamadi</div>';dd.classList.add('open');return}
+          dd.innerHTML='';
+          d.items.forEach(function(name){
+            var el=document.createElement('div');
+            el.className='sd-item';
+            el.textContent=name;
+            el.setAttribute('data-name',name);
+            dd.appendChild(el);
+          });
+          dd.classList.add('open');
+          openIdx=-1;
+        })
+        .catch(function(){dd.classList.remove('open')});
+    },200);
+  });
+
+  input.addEventListener('keydown',function(e){
+    var items=dd.querySelectorAll('.sd-item');
+    if(!items.length||!dd.classList.contains('open'))return;
+    if(e.key==='ArrowDown'){e.preventDefault();openIdx=Math.min(openIdx+1,items.length-1);items.forEach(function(el,i){el.classList.toggle('active',i===openIdx)})}
+    else if(e.key==='ArrowUp'){e.preventDefault();openIdx=Math.max(openIdx-1,0);items.forEach(function(el,i){el.classList.toggle('active',i===openIdx)})}
+    else if(e.key==='Enter'){
+      e.preventDefault();
+      if(openIdx>=0&&items[openIdx]){
+        window.location.href='/item/'+encodeURIComponent(items[openIdx].getAttribute('data-name'))+'?lvl=%2B0';
+      }else if(input.value.trim()){
+        window.location.href='/item/'+encodeURIComponent(input.value.trim())+'?lvl=%2B0';
+      }
+    }else if(e.key==='Escape'){dd.classList.remove('open')}
+  });
+
+  dd.addEventListener('click',function(e){
+    var el=e.target.closest('.sd-item');
+    if(!el)return;
+    window.location.href='/item/'+encodeURIComponent(el.getAttribute('data-name'))+'?lvl=%2B0';
+  });
+
+  document.addEventListener('click',function(e){
+    if(!e.target.closest('.tv-search-wrapper'))dd.classList.remove('open');
+  });
+
+  input.addEventListener('focus',function(){
+    if(dd.children.length>0&&input.value.trim().length>0)dd.classList.add('open');
+  });
+})();
+
+// Top Items
+const TOP_ITEMS=[{% for it in top_items %}{name:{{ it.item | tojson }},lvl:{{ it.lvl | tojson }},count:{{ it.count }},sell:{{ it.sell_med }},buy:{{ it.buy_med }},profit:{{ it.profit }},active:{{ 'true' if it.is_active else 'false' }},hours:{{ it.hours_ago }}}{% if not loop.last %},{% endif %}{% endfor %}];
+const HIGH_ITEMS=[{% for it in high_items %}{name:{{ it.item | tojson }},lvl:{{ it.lvl | tojson }},count:{{ it.count }},sell:{{ it.sell_med }},buy:{{ it.buy_med }},profit:{{ it.profit }},active:{{ 'true' if it.is_active else 'false' }},hours:{{ it.hours_ago }}}{% if not loop.last %},{% endif %}{% endfor %}];
+const MID_ITEMS=[{% for it in mid_items %}{name:{{ it.item | tojson }},lvl:{{ it.lvl | tojson }},count:{{ it.count }},sell:{{ it.sell_med }},buy:{{ it.buy_med }},profit:{{ it.profit }},active:{{ 'true' if it.is_active else 'false' }},hours:{{ it.hours_ago }}}{% if not loop.last %},{% endif %}{% endfor %}];
+
+document.getElementById('statTotal').textContent=TOP_ITEMS.length;
+document.getElementById('statActive').textContent=TOP_ITEMS.filter(i=>i.active).length;
+document.getElementById('statPassive').textContent=TOP_ITEMS.filter(i=>!i.active).length;
+
+function buildCards(items, skipSparklines){
+  const grid=document.getElementById('topGrid');
+  grid.innerHTML='';
+  items.forEach((it,idx)=>{
+    const card=document.createElement('div');
+    card.className='item-card';
+    card.onclick=()=>location.href='/item/'+encodeURIComponent(it.name)+'?lvl='+encodeURIComponent(it.lvl)+'&server='+encodeURIComponent('{{ current_server or "" }}');
+    const sellVal=it.sell_med||it.sell||0;
+    const color=getItemColor(it.name);
+    const initials=getItemInitial(it.name);
+    card.innerHTML=`
+      <div class="card-top">
+        <div class="card-logo" style="background:${color}">${initials}</div>
+        <div class="card-info">
+          <div class="card-name" title="${it.name.replace(/"/g,'&quot;')}">${it.name.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+          <div class="card-lvl">${it.lvl||'+0'}</div>
+        </div>
+        <div class="card-rank">${idx+1}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="card-price">${sellVal?sellVal.toLocaleString('tr-TR'):'-'}<span>Coins</span></span>
+        <span class="card-badge ${it.active?'badge-active':'badge-passive'}">${it.active?'AKTIF':'PASIF'}</span>
+      </div>`;
+    if(!skipSparklines){
+      const sp=document.createElement('div');
+      sp.className='card-sparkline';
+      sp.id='spark'+idx;
+      card.appendChild(sp);
+    }
+    grid.appendChild(card);
+    if(!skipSparklines){
+      fetch('/api/item/'+encodeURIComponent(it.name)+'?lvl='+encodeURIComponent(it.lvl))
+        .then(r=>r.json()).then(data=>{
+          if(!data.prices||data.prices.length<2)return;
+          const c=document.getElementById('spark'+idx);
+          if(!c)return;
+          const chart=LightweightCharts.createChart(c,{layout:{background:{color:'transparent'},textColor:'#444',fontSize:8},grid:{vertLines:{visible:false},horzLines:{visible:false}},rightPriceScale:{visible:false},timeScale:{visible:false},handleScroll:false,handleScale:false,crosshair:{mode:LightweightCharts.CrosshairMode.Hidden},logo:{visible:false}});
+          const sells=data.prices.filter(p=>p.type==='sell').reverse();
+          const series=chart.addAreaSeries({lineColor:color,topColor:color+'20',bottomColor:'transparent',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+          series.setData(sells.map((p,i)=>({time:Math.floor(new Date(p.timestamp).getTime()/1000)+i,value:Math.round(p.price)})));
+          chart.timeScale().fitContent();
+        }).catch(()=>{});
+    }
+  });
+}
+
+let volItems={{ vol_items | tojson }};
+const urlParams=new URLSearchParams(window.location.search);
+let currentTab=urlParams.get('tab')||'top50';
+function switchTab(tab){
+  currentTab=tab;
+  const u=new URL(window.location);u.searchParams.set('tab',tab);window.history.replaceState({},'',u);
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`.tab-btn[onclick*="${tab}"]`).classList.add('active');
+  if(tab==='top50')buildCards(TOP_ITEMS);
+  else if(tab==='high8')buildCards(HIGH_ITEMS);
+  else if(tab==='mid7')buildCards(MID_ITEMS);
+  else buildCards(volItems);
+}
+
+switchTab(currentTab);
+
+// ---- AUTO-REFRESH (her 5sn'de bir verileri yenile) ----
+let AUTO_REFRESH_ENABLED = true;
+const AUTO_INTERVAL = 30000;
+
+async function autoRefreshDashboard() {
+  if (!AUTO_REFRESH_ENABLED) return;
+  try {
+    const tab = currentTab === 'vol' ? 'top50' : currentTab;
+    const r = await fetch('/api/top-items?server=ZERO&tab=' + tab + '&limit=50');
+    const d = await r.json();
+    if (d.items && d.items.length > 0) {
+      // Update data arrays
+      TOP_ITEMS.length = 0;
+      d.items.forEach(it => {
+        TOP_ITEMS.push({
+          name: it.item, lvl: it.lvl, count: it.count || 0,
+          sell: it.sell_med || it.sell || 0,
+          buy: it.buy_med || it.buy || 0,
+          profit: it.profit || 0,
+          active: it.is_active !== false,
+          hours: it.hours_ago || 0
+        });
+      });
+      // Rebuild current tab (skip sparklines on auto-refresh)
+      if (currentTab === 'top50') buildCards(TOP_ITEMS, true);
+      else if (currentTab === 'high8') buildCards(HIGH_ITEMS, true);
+      else if (currentTab === 'mid7') buildCards(MID_ITEMS, true);
+      else buildCards(volItems, true);
+
+      // Update stats
+      document.getElementById('statTotal').textContent = TOP_ITEMS.length;
+      document.getElementById('statActive').textContent = TOP_ITEMS.filter(i => i.active).length;
+      document.getElementById('statPassive').textContent = TOP_ITEMS.filter(i => !i.active).length;
+    }
+    // Update record count
+    const sr = await fetch('/api/stats');
+    const sd = await sr.json();
+    if (sd.total_prices) {
+      const el = document.getElementById('statActive');
+      if (el) el.title = sd.total_prices + ' toplam kayit';
+    }
+  } catch (e) {
+    console.warn('[AUTO] Dashboard refresh hatasi:', e.message);
+  }
+}
+
+setInterval(autoRefreshDashboard, AUTO_INTERVAL);
+
+// Alarms
+function loadAlarms(){
+  const list=document.getElementById('alarmList');
+  const alarms=JSON.parse(localStorage.getItem('mm_alarms')||'[]');
+  if(!alarms.length){list.innerHTML='<div class="no-data">Henüz alarm eklenmemiş</div>';return}
+  list.innerHTML='';
+  alarms.forEach((a,i)=>{
+    const hit=a.currentPrice&&((a.direction==='above'&&a.currentPrice>=a.targetPrice)||(a.direction==='below'&&a.currentPrice<=a.targetPrice));
+    const el=document.createElement('div');
+    el.className='alarm-item '+(hit?'hit':'waiting');
+    el.innerHTML=`<div class="alarm-dot ${hit?'hit':'waiting'}"></div><div class="alarm-info"><div class="alarm-name">${a.itemName} ${a.lvl||'+0'}</div><div class="alarm-target">Hedef: ${a.targetPrice.toLocaleString('tr-TR')} ${a.direction==='above'?'↑':'↓'}</div></div><button class="alarm-delete" onclick="deleteAlarm(${i})">✕</button>`;
+    list.appendChild(el);
+  });
+}
+function deleteAlarm(i){const a=JSON.parse(localStorage.getItem('mm_alarms')||'[]');a.splice(i,1);localStorage.setItem('mm_alarms',JSON.stringify(a));loadAlarms()}
+loadAlarms();
+
+// Sidebar hover: mouseenter → visible, mouseleave → 5s fade
+const sidebar=document.querySelector('.sidebar');
+let fadeTimer=null;
+sidebar.addEventListener('mouseenter',()=>{
+  clearTimeout(fadeTimer);
+  sidebar.classList.remove('fading');
+  sidebar.classList.add('visible');
+});
+sidebar.addEventListener('mouseleave',()=>{
+  sidebar.classList.remove('visible');
+  sidebar.classList.add('fading');
+});
+</script>
+</body>
+</html>

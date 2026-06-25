@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Loglari - Market Master</title>
+    <link rel="stylesheet" href="/static/css/landing.css">
+    <style>
+        .audit-table { width:100%; border-collapse:collapse; margin-top:20px }
+        .audit-table th, .audit-table td { padding:8px 12px; text-align:left; border-bottom:1px solid #333 }
+        .audit-table th { background:#1a1a2e; color:#787b86; font-size:11px; text-transform:uppercase }
+        .audit-table td { color:#e0e0e0; font-size:13px }
+        .tag { padding:2px 8px; border-radius:3px; font-size:11px }
+        .tag-success { background:#26a69a22; color:#26a69a }
+        .tag-fail { background:#ef535022; color:#ef5350 }
+        .tag-info { background:#2196f322; color:#2196f3 }
+        .filter-btn { padding:6px 12px; margin:4px; border:1px solid #444; border-radius:4px; background:transparent; color:#e0e0e0; cursor:pointer; font-size:12px }
+        .filter-btn.active { background:#26a69a; border-color:#26a69a }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <div class="form-box" style="max-width:1000px">
+            <h2>Audit Loglari</h2>
+            <a href="/admin/users" style="color:#26a69a;text-decoration:none">Kullanici Yonetimi</a> |
+            <a href="/dashboard" style="color:#787b86;text-decoration:none">Geri Don</a>
+
+            <div style="margin-top:15px">
+                <a href="/admin/audit" class="filter-btn {% if not event_type %}active{% endif %}">Tumu</a>
+                <a href="/admin/audit?type=LOGIN_SUCCESS" class="filter-btn {% if event_type == 'LOGIN_SUCCESS' %}active{% endif %}">Giris Basarili</a>
+                <a href="/admin/audit?type=LOGIN_FAIL" class="filter-btn {% if event_type == 'LOGIN_FAIL' %}active{% endif %}">Giris Basarisiz</a>
+                <a href="/admin/audit?type=ACCOUNT_LOCKED" class="filter-btn {% if event_type == 'ACCOUNT_LOCKED' %}active{% endif %}">Hesap Kilitlendi</a>
+                <a href="/admin/audit?type=PASSWORD_CHANGE" class="filter-btn {% if event_type == 'PASSWORD_CHANGE' %}active{% endif %}">Sifre Degisikligi</a>
+                <a href="/admin/audit?type=REGISTER" class="filter-btn {% if event_type == 'REGISTER' %}active{% endif %}">Kayit</a>
+                <a href="/admin/audit?type=RATE_LIMIT" class="filter-btn {% if event_type == 'RATE_LIMIT' %}active{% endif %}">Rate Limit</a>
+            </div>
+
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>Zaman</th>
+                        <th>Olay</th>
+                        <th>Kullanici</th>
+                        <th>IP</th>
+                        <th>Detay</th>
+                        <th>Durum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.timestamp[:19] if log.timestamp else '-' }}</td>
+                        <td>
+                            {% if 'SUCCESS' in log.event_type %}
+                                <span class="tag tag-success">{{ log.event_type }}</span>
+                            {% elif 'FAIL' in log.event_type or 'LOCKED' in log.event_type %}
+                                <span class="tag tag-fail">{{ log.event_type }}</span>
+                            {% else %}
+                                <span class="tag tag-info">{{ log.event_type }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.username or '-' }}</td>
+                        <td>{{ log.ip_address or '-' }}</td>
+                        <td>{{ log.details or '-' }}</td>
+                        <td>
+                            {% if log.success %}
+                                <span class="tag tag-success">OK</span>
+                            {% else %}
+                                <span class="tag tag-fail">FAIL</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if not logs %}
+            <p style="text-align:center;color:#787b86;margin-top:30px">Log bulunamadi</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

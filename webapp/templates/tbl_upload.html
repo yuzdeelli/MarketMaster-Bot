@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TBL Yukle - Market Master</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#d1d4dc}
+.top{background:linear-gradient(135deg,#0d0d1a,#1a0a0a);border-bottom:3px solid #e94560;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+.top .logo{font-size:22px;font-weight:900;color:#e94560;text-decoration:none}
+.top .nav a{color:#666;text-decoration:none;font-size:12px;margin-left:14px}
+.top .nav a:hover{color:#e94560}
+.top .nav a.active{color:#e94560}
+.container{max-width:1000px;margin:0 auto;padding:20px}
+h1{font-size:20px;color:#fff;margin-bottom:4px}
+.sub{color:#555;font-size:12px;margin-bottom:20px}
+
+.upload-box{background:#111122;border:2px dashed #1a1a2e;border-radius:12px;padding:40px;text-align:center;transition:all .3s}
+.upload-box:hover{border-color:#e94560}
+.upload-box.dragover{border-color:#e94560;background:rgba(233,69,96,.05)}
+.upload-icon{font-size:48px;margin-bottom:16px}
+.upload-text{font-size:16px;color:#888;margin-bottom:16px}
+.upload-btn{background:#e94560;color:#fff;border:none;border-radius:8px;padding:12px 32px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.upload-btn:hover{background:#ff6b81;transform:translateY(-2px)}
+.upload-hint{font-size:11px;color:#555;margin-top:12px}
+#fileInput{display:none}
+
+.result-box{background:#111122;border:1px solid #1a1a2e;border-radius:8px;padding:20px;margin-top:20px;display:none}
+.result-box.show{display:block}
+.result-title{font-size:14px;font-weight:700;color:#e94560;margin-bottom:12px}
+.result-stats{display:flex;gap:24px;margin-bottom:16px}
+.stat{display:flex;flex-direction:column;gap:4px}
+.stat .num{font-size:24px;font-weight:900;color:#fff}
+.stat .lbl{font-size:10px;color:#888;text-transform:uppercase}
+.stat.green .num{color:#2ecc71}
+.stat.blue .num{color:#3498db}
+
+.item-list{max-height:400px;overflow-y:auto;background:#0a0a14;border-radius:6px;padding:12px}
+.item-row{padding:6px 0;border-bottom:1px solid #1a1a2e;font-size:12px;display:flex;justify-content:space-between}
+.item-row:hover{color:#e94560}
+.item-row .id{color:#888;width:60px}
+.item-row .name{flex:1}
+
+.info-box{background:#111122;border:1px solid #1a1a2e;border-radius:8px;padding:16px;margin-top:20px}
+.info-title{font-size:12px;font-weight:700;color:#f1c40f;margin-bottom:8px}
+.info-text{font-size:12px;color:#888;line-height:1.6}
+.info-text code{background:#0a0a14;padding:2px 6px;border-radius:3px;color:#e94560}
+
+.error{background:rgba(231,76,60,.1);border:1px solid #e74c3c;border-radius:6px;padding:12px;color:#e74c3c;margin-top:12px;display:none}
+.error.show{display:block}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="logo" href="/">MARKET MASTER</a>
+  <div class="nav">
+    <a href="/tbl-yukle" class="active">TBL Yukle</a>
+  </div>
+</div>
+
+<div class="container">
+  <h1>TBL Dosyasi Yukle</h1>
+  <div class="sub">Knight Online item.tbl dosyasini yukleyin, item isimleri veritabanina islenir</div>
+
+  <div class="upload-box" id="uploadBox">
+    <div class="upload-icon"></div>
+    <div class="upload-text">TBL dosyasini surukleyin veya tiklayarak secin</div>
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Dosya Sec</button>
+    <div class="upload-hint">item.tbl, itemtable.tbl veya benzeri dosyalar</div>
+    <input type="file" id="fileInput" accept=".tbl">
+  </div>
+
+  <div class="error" id="errorBox"></div>
+
+  <div class="result-box" id="resultBox">
+    <div class="result-title">Yukleme Tamamlandi</div>
+    <div class="result-stats">
+      <div class="stat blue"><div class="num" id="totalCount">0</div><div class="lbl">Toplam Item</div></div>
+      <div class="stat green"><div class="num" id="addedCount">0</div><div class="lbl">Yeni Eklenen</div></div>
+    </div>
+    <div class="item-list" id="itemList"></div>
+  </div>
+
+  <div class="info-box">
+    <div class="info-title">Nasil Calisir?</div>
+    <div class="info-text">
+      1. Knight Online klasorunden <code>item.tbl</code> dosyasini bulun<br>
+      2. Asagidaki alana surukleyin veya "Dosya Sec" butonuna tiklayin<br>
+      3. Dosya otomatik olarak parse edilecek<br>
+      4. Item isimleri veritabanina kaydedilecek<br>
+      5. Artik <a href="/arama" style="color:#e94560">Arama</a> sayfasindan bu itemleri bulabilirsiniz
+    </div>
+  </div>
+
+  <div class="info-box" style="margin-top:12px">
+    <div class="info-title">TBL Dosyasi Nerede?</div>
+    <div class="info-text">
+      Genelde su konumlardadir:<br>
+      <code>C:\Program Files (x86)\Knight Online\item.tbl</code><br>
+      <code>C:\KnightOnline\item.tbl</code><br>
+      <code>Oyunun Data klasoru\item.tbl</code>
+    </div>
+  </div>
+</div>
+
+<script>
+const uploadBox = document.getElementById('uploadBox');
+const fileInput = document.getElementById('fileInput');
+const resultBox = document.getElementById('resultBox');
+const errorBox = document.getElementById('errorBox');
+
+// Drag & Drop
+uploadBox.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadBox.classList.add('dragover');
+});
+
+uploadBox.addEventListener('dragleave', () => {
+  uploadBox.classList.remove('dragover');
+});
+
+uploadBox.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadBox.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+});
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) uploadFile(file);
+});
+
+function uploadFile(file) {
+  if (!file.name.toLowerCase().endsWith('.tbl')) {
+    showError('Sadece .tbl dosyalari yuklenebilir');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  uploadBox.innerHTML = '<div class="upload-icon">⏳</div><div class="upload-text">Yukleniyor...</div>';
+  
+  fetch('/api/tbl/upload', {
+    method: 'POST',
+    body: formData
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      showError(data.error);
+      resetUpload();
+      return;
+    }
+    
+    document.getElementById('totalCount').textContent = data.total;
+    document.getElementById('addedCount').textContent = data.added;
+    
+    const list = document.getElementById('itemList');
+    list.innerHTML = '';
+    data.items.forEach(name => {
+      list.innerHTML += `<div class="item-row"><span class="name">${name}</span></div>`;
+    });
+    if (data.items.length < data.total) {
+      list.innerHTML += `<div class="item-row" style="color:#888">... ve ${data.total - data.items.length} tane daha</div>`;
+    }
+    
+    resultBox.classList.add('show');
+    uploadBox.innerHTML = '<div class="upload-icon">✅</div><div class="upload-text">Yukleme tamamlandi!</div><button class="upload-btn" onclick="resetUpload()">Baska Dosya Yukle</button>';
+  })
+  .catch(err => {
+    showError('Yukleme hatasi: ' + err.message);
+    resetUpload();
+  });
+}
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.add('show');
+  setTimeout(() => errorBox.classList.remove('show'), 5000);
+}
+
+function resetUpload() {
+  uploadBox.innerHTML = '<div class="upload-icon">📂</div><div class="upload-text">TBL dosyasini surukleyin veya tiklayarak secin</div><button class="upload-btn" onclick="document.getElementById(\'fileInput\').click()">Dosya Sec</button><div class="upload-hint">item.tbl, itemtable.tbl veya benzeri dosyalar</div><input type="file" id="fileInput" accept=".tbl">';
+  document.getElementById('fileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) uploadFile(file);
+  });
+  resultBox.classList.remove('show');
+}
+</script>
+</body>
+</html>

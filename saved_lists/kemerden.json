@@ -1,0 +1,102 @@
+{
+  "items": [
+    {
+      "name": "Superior Draki Supply Box",
+      "lvl": "+0",
+      "buy_price": 19000000.0,
+      "buy_strategy": "Spread Filtreli",
+      "count": 1,
+      "sell_strategy": "Auto/Min",
+      "sell_price": 21334660.0,
+      "server": "",
+      "buy_fixed": true,
+      "sell_fixed": false
+    },
+    {
+      "name": "Old Draki Supply Box",
+      "lvl": "+0",
+      "buy_price": 10340000.0,
+      "buy_strategy": "Spread Filtreli",
+      "count": 1,
+      "sell_strategy": "Auto/Min",
+      "sell_price": 11000000.0,
+      "server": "",
+      "buy_fixed": true,
+      "sell_fixed": false
+    },
+    {
+      "name": "Fortified Sterling Silver Gemstone",
+      "lvl": "+0",
+      "buy_price": 9020000.0,
+      "buy_strategy": "Spread Filtreli",
+      "count": 1,
+      "sell_strategy": "Auto/Min",
+      "sell_price": 9734999.0,
+      "server": "",
+      "buy_fixed": true,
+      "sell_fixed": false
+    },
+    {
+      "name": "silvery gem",
+      "lvl": "+0",
+      "buy_price": 9015000.0,
+      "buy_strategy": "Spread Filtreli",
+      "count": 1,
+      "sell_strategy": "Auto/Q1",
+      "sell_price": 9691888.0,
+      "server": "",
+      "buy_fixed": true,
+      "sell_fixed": false
+    },
+    {
+      "name": "blue gem",
+      "lvl": "+0",
+      "buy_price": 4035000.0,
+      "buy_strategy": "Spread Filtreli",
+      "count": 1,
+      "sell_strategy": "Auto/%95 Alt",
+      "sell_price": 4438500.0,
+      "server": "",
+      "buy_fixed": true,
+      "sell_fixed": false
+    },
+    {
+      "name": "green gem",
+      "lvl": "+0",
+      "buy_price": 2000000.0,
+      "buy_strategy": "Spread Filtreli",
+      "count": 1,
+      "sell_strategy": "Auto/%95 Alt",
+      "sell_price": 2200000.0,
+      "server": "",
+      "buy_fixed": true,
+      "sell_fixed": false
+    },
+    {
+      "name": "black gem",
+      "lvl": "+0",
+      "buy_price": 2000000.0,
+      "buy_strategy": "Spread Filtreli",
+      "count": 1,
+      "sell_strategy": "Auto/Q1",
+      "sell_price": 2269999.0,
+      "server": "",
+      "buy_fixed": true,
+      "sell_fixed": false
+    },
+    {
+      "name": "Blue Treasure Chest",
+      "lvl": "+0",
+      "buy_price": 8240000.0,
+      "buy_strategy": "Spread Filtreli",
+      "count": 1,
+      "sell_strategy": "Auto/Min",
+      "sell_price": 8999777.0,
+      "server": "",
+      "buy_fixed": true,
+      "sell_fixed": false
+    },
+    {
+      "name": "Green Treasure Chest",
+      "lvl": "+0",
+      "buy_price": 
