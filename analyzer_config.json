@@ -1,9 +1,0 @@
-{
-  "admin_password": "$2b$12$1CxcLZ8LogLRjyWAYO8/1eewnCnJroUuP5ZOjK2umP.GxRTch2Ldq",
-  "uskopazar_api_key": "wBoUAeEerzRsOm6MBFCm1/GMrgOhGuSGS2b/S1ZSaVvQCxppsRj4Njg4bYwOXKHW/9KoBg==",
-  "auto_scan_minutes": 1199,
-  "web_port": 8765,
-  "portfolio_port": 9000,
-  "uskopazar_api_key_encrypted": true,
-  "iqr_multiplier": 1.5
-}
