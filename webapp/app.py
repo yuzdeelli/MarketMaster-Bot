@@ -1337,8 +1337,8 @@ def api_endeks_data():
             where_extra += f" AND server IN ({ph})"
             params_extra.extend(matched_servers)
         if filter_item:
-            where_extra += " AND item_name = ?"
-            params_extra.append(filter_item)
+            where_extra += " AND LOWER(item_name) LIKE ?"
+            params_extra.append(f"%{filter_item.lower()}%")
 
         # 1) All prices into memory
         rows = db.execute(
@@ -1403,7 +1403,7 @@ def api_endeks_data():
                 for (s, name, lvl), v in srv_item_prices.items():
                     if s != srv:
                         continue
-                    if filter_item and name != filter_item:
+                    if filter_item and filter_item.lower() not in name.lower():
                         continue
                     cnt = len(v["sell"]) + len(v["buy"])
                     items[(name, lvl)] = {"sell": v["sell"], "buy": v["buy"], "count": cnt}
@@ -1418,7 +1418,7 @@ def api_endeks_data():
         ranked_all = sorted(all_item_prices.items(),
             key=lambda x: len(x[1]["sell"]) + len(x[1]["buy"]), reverse=True)[:30]
         if filter_item:
-            ranked_all = [(k, v) for k, v in ranked_all if k[0] == filter_item]
+            ranked_all = [(k, v) for k, v in ranked_all if filter_item.lower() in k[0].lower()]
         top_items = []
         for k, v in ranked_all:
             srv_list = []
@@ -1454,7 +1454,7 @@ def api_endeks_data():
         item_all_levels = []
         if filter_item:
             for (s, name, lvl), v in srv_item_prices.items():
-                if name != filter_item:
+                if filter_item.lower() not in name.lower():
                     continue
                 sell_stats = calc_stats(v["sell"])
                 buy_stats = calc_stats(v["buy"])
@@ -1478,8 +1478,8 @@ def api_endeks_data():
             change_where += f" AND server IN ({ph})"
             change_params.extend(matched_servers)
         if filter_item:
-            change_where += " AND item_name = ?"
-            change_params.append(filter_item)
+            change_where += " AND LOWER(item_name) LIKE ?"
+            change_params.append(f"%{filter_item.lower()}%")
         change_rows = db.execute(f"SELECT item_name, item_lvl, type, timestamp, price FROM prices {change_where}", change_params).fetchall()
         ch = {}
         for r in change_rows:
