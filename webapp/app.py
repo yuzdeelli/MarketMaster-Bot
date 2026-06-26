@@ -177,7 +177,7 @@ def security_check():
 
     if request.path.startswith("/api/"):
         if not session.get("logged_in"):
-            public_apis = ("/api/items", "/api/ohlc/", "/api/stats", "/api/servers", "/api/top-items", "/api/live", "/api/item/", "/api/analytics/", "/api/search", "/api/autocomplete", "/api/price-changes", "/api/analiz/")
+            public_apis = ("/api/items", "/api/ohlc/", "/api/stats", "/api/servers", "/api/top-items", "/api/live", "/api/item/", "/api/analytics/", "/api/search", "/api/autocomplete", "/api/price-changes", "/api/analiz/", "/api/ticker")
             is_public = any(request.path.startswith(p) for p in public_apis)
             if not is_public:
                 token = request.headers.get("X-API-Token", "")
@@ -794,7 +794,9 @@ def dashboard():
     from webapp.database import get_all_item_names
     all_items = get_all_item_names()
 
-    return render_template("dashboard.html", top_items=top_items, high_items=high_items, mid_items=mid_items, vol_items=vol_items, stats=stats, current_server=server, ticker_items=[], all_items=all_items)
+    ticker_cfg = _load_ticker()
+
+    return render_template("dashboard.html", top_items=top_items, high_items=high_items, mid_items=mid_items, vol_items=vol_items, stats=stats, current_server=server, ticker_items=ticker_cfg.get("items", []), ticker_enabled=ticker_cfg.get("enabled", False), all_items=all_items)
 
 
 @app.route("/item")
@@ -1267,6 +1269,90 @@ def api_analytics_chart(chart_type):
 @app.route("/live")
 def live_page():
     return render_template("live.html")
+
+
+_TICKER_FILE = os.path.join(_project_root, "ticker.json")
+
+def _load_ticker():
+    try:
+        with open(_TICKER_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"enabled": False, "items": [], "hide_buy_for": []}
+
+def _save_ticker(data):
+    with open(_TICKER_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+@app.route("/api/ticker", methods=["GET"])
+def api_ticker_get():
+    return jsonify(_load_ticker())
+
+
+@app.route("/api/ticker", methods=["POST"])
+def api_ticker_post():
+    token = request.headers.get("X-API-Token", "")
+    if not verify_api_token(token):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    action = data.get("action", "")
+    cfg = _load_ticker()
+
+    if action == "toggle":
+        cfg["enabled"] = not cfg.get("enabled", False)
+        _save_ticker(cfg)
+        return jsonify({"ok": True, "enabled": cfg["enabled"]})
+
+    elif action == "set_enabled":
+        cfg["enabled"] = bool(data.get("enabled", True))
+        _save_ticker(cfg)
+        return jsonify({"ok": True, "enabled": cfg["enabled"]})
+
+    elif action == "add_item":
+        name = data.get("name", "").strip()
+        price = int(data.get("price", 0))
+        if not name or price <= 0:
+            return jsonify({"error": "name ve price gerekli"}), 400
+        items = cfg.get("items", [])
+        items = [i for i in items if i["name"].lower() != name.lower()]
+        items.append({"name": name, "price": price})
+        cfg["items"] = items
+        _save_ticker(cfg)
+        return jsonify({"ok": True, "items": items})
+
+    elif action == "remove_item":
+        name = data.get("name", "").strip()
+        items = cfg.get("items", [])
+        cfg["items"] = [i for i in items if i["name"].lower() != name.lower()]
+        _save_ticker(cfg)
+        return jsonify({"ok": True, "items": cfg["items"]})
+
+    elif action == "set_items":
+        cfg["items"] = data.get("items", [])
+        _save_ticker(cfg)
+        return jsonify({"ok": True, "items": cfg["items"]})
+
+    elif action == "hide_add":
+        name = data.get("name", "").strip()
+        if not name:
+            return jsonify({"error": "name gerekli"}), 400
+        hide = cfg.get("hide_buy_for", [])
+        if name.lower() not in [h.lower() for h in hide]:
+            hide.append(name)
+        cfg["hide_buy_for"] = hide
+        _save_ticker(cfg)
+        return jsonify({"ok": True, "hide_buy_for": cfg["hide_buy_for"]})
+
+    elif action == "hide_remove":
+        name = data.get("name", "").strip()
+        hide = cfg.get("hide_buy_for", [])
+        cfg["hide_buy_for"] = [h for h in hide if h.lower() != name.lower()]
+        _save_ticker(cfg)
+        return jsonify({"ok": True, "hide_buy_for": cfg["hide_buy_for"]})
+
+    return jsonify({"error": f"Bilinmeyen action: {action}"}), 400
 
 
 @app.route("/api/analiz/<path:item_name>")

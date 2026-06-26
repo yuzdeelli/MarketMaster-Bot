@@ -230,18 +230,20 @@ body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;background:#0a0a0a;co
 <div id="searchBackdrop" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:5000" onclick="document.getElementById('searchBackdrop').style.display='none'"></div>
 
 <!-- TICKER BANNER -->
+{% if ticker_enabled and ticker_items %}
 <div class="ticker-wrap">
   <div class="ticker">
     {% for t in ticker_items %}
-    <span class="ticker-item">Buy {{ t.name }} {{ '{:,}'.format(t.price) }}</span>
+    <span class="ticker-item">{{ t.name }} {{ '{:,}'.format(t.price) }}</span>
     <span class="ticker-sep">/</span>
     {% endfor %}
     {% for t in ticker_items %}
-    <span class="ticker-item">Buy {{ t.name }} {{ '{:,}'.format(t.price) }}</span>
+    <span class="ticker-item">{{ t.name }} {{ '{:,}'.format(t.price) }}</span>
     <span class="ticker-sep">/</span>
     {% endfor %}
   </div>
 </div>
+{% endif %}
 
 <!-- MAIN LAYOUT -->
 <div class="main-layout">

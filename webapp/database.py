@@ -11,6 +11,17 @@ else:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DB_PATH = os.path.join(BASE_DIR, "app_data.db")
+_TICKER_FILE = os.path.join(BASE_DIR, "ticker.json")
+
+
+def _should_hide_buy(item_name):
+    try:
+        with open(_TICKER_FILE, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        hide_list = cfg.get("hide_buy_for", [])
+        return item_name.lower() in [h.lower() for h in hide_list]
+    except Exception:
+        return False
 
 
 SERVER_MAP = {
@@ -174,6 +185,8 @@ def _time_filter(hours=None):
 
 
 def _calc_stats(db, item, lvl, ptype, hours=None, server=None):
+    if ptype.lower() == "buy" and _should_hide_buy(item):
+        return None
     tf, tf_param = _time_filter(hours)
     sf = ""
     lf = ""
