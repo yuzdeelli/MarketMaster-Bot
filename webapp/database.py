@@ -210,15 +210,19 @@ def _calc_stats(db, item, lvl, ptype, hours=None, server=None):
     all_sellers = set(r["seller"] for r in rows if r["seller"])
     n_all = len(all_vals)
     ns = len(all_sellers) if all_sellers else n_all
+
     vals_sorted = sorted(all_vals)
-    raw_median = vals_sorted[n_all // 2] if n_all % 2 else (vals_sorted[n_all // 2 - 1] + vals_sorted[n_all // 2]) // 2
-    q1 = vals_sorted[int(n_all * 0.25)] if n_all >= 4 else vals_sorted[0]
-    q3 = vals_sorted[int(n_all * 0.75)] if n_all >= 4 else vals_sorted[-1]
-    upper_limit = min(q3, raw_median * 2) if raw_median > 0 else q3
-    lower_limit = max(q1, raw_median * 0.5) if raw_median > 0 else q1
-    vals = [v for v in all_vals if lower_limit <= v <= upper_limit]
+    q1_idx = int(n_all * 0.25)
+    q3_idx = int(n_all * 0.75)
+    q1 = vals_sorted[q1_idx] if n_all >= 4 else vals_sorted[0]
+    q3 = vals_sorted[q3_idx] if n_all >= 4 else vals_sorted[-1]
+    iqr = q3 - q1
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+    vals = [v for v in all_vals if lower_bound <= v <= upper_bound]
     if len(vals) < 3:
         vals = all_vals
+
     n = len(vals)
     vals_sorted = sorted(vals)
     median = vals_sorted[n // 2] if n % 2 else (vals_sorted[n // 2 - 1] + vals_sorted[n // 2]) // 2
@@ -227,7 +231,7 @@ def _calc_stats(db, item, lvl, ptype, hours=None, server=None):
     mean_val = sum(vals) / n
     variance = sum((v - mean_val) ** 2 for v in vals) / n
     std = round(variance ** 0.5)
-    iqr = trimmed_q3 - trimmed_q1
+    trimmed_iqr = trimmed_q3 - trimmed_q1
     hata = round((std / mean_val) * 100, 1) if mean_val > 0 else 0
     return {
         "min": vals_sorted[0],
@@ -237,7 +241,7 @@ def _calc_stats(db, item, lvl, ptype, hours=None, server=None):
         "q1": trimmed_q1,
         "q3": trimmed_q3,
         "std": std,
-        "iqr": iqr,
+        "iqr": trimmed_iqr,
         "hata": hata,
         "count": n,
         "sellers": ns,
@@ -348,10 +352,14 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
         prices_all = sorted([r["price"] for r in all_records])
         n_prices = len(prices_all)
         if n_prices > 5:
-            median = prices_all[n_prices // 2]
-            low_bound = median * 0.7
-            high_bound = median * 1.3
-            all_records = [r for r in all_records if low_bound <= r["price"] <= high_bound]
+            q1_idx = int(n_prices * 0.25)
+            q3_idx = int(n_prices * 0.75)
+            q1 = prices_all[q1_idx]
+            q3 = prices_all[q3_idx]
+            iqr = q3 - q1
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
+            all_records = [r for r in all_records if lower_bound <= r["price"] <= upper_bound]
 
         if not all_records:
             return []

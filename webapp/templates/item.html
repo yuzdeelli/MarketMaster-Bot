@@ -476,16 +476,16 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
                         {% for n in range(0, 11) %}
                           {% set val = '+' ~ n %}
                           <div class="lvl-option {% if lvl == val %}active{% endif %}" onclick="selectLevel('{{ val }}')">
-                            <span>All {{ val }}</span>
+                            <span>+{{ n }}</span>
                             {% if val in existing_lvls %}
                               {% for lv in all_levels %}{% if lv.lvl == val %}<span class="lvl-cnt">{{ lv.cnt }}</span>{% endif %}{% endfor %}
                             {% endif %}
                           </div>
                         {% endfor %}
                         {% for n in range(1, 22) %}
-                          {% set val = 'rev+' ~ n %}
+                          {% set val = '+' ~ n ~ 'R' %}
                           <div class="lvl-option {% if lvl == val %}active{% endif %}" onclick="selectLevel('{{ val }}')">
-                            <span>Reb +{{ n }}</span>
+                            <span>+{{ n }}R</span>
                             {% if val in existing_lvls %}
                               {% for lv in all_levels %}{% if lv.lvl == val %}<span class="lvl-cnt">{{ lv.cnt }}</span>{% endif %}{% endfor %}
                             {% endif %}

@@ -905,7 +905,7 @@ def item_detail(item):
             num = int(l.rstrip("Rr+"))
         except ValueError:
             num = 0
-        return (1 if is_rev else 0, num, l)
+        return (2 if is_rev else 1, num, l)
     all_levels.sort(key=_lvl_sort_key)
 
     from webapp.database import get_all_item_names
