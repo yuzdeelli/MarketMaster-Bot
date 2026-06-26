@@ -1,4 +1,5 @@
-﻿import os
+# -*- coding: utf-8 -*-
+import os
 import sys
 import time
 import json
@@ -34,8 +35,10 @@ except Exception:
     app.secret_key = secrets.token_bytes(32)
 
 _rate_data = {}
-RATE_LIMIT = 60
-RATE_WINDOW = 60
+_burst_data = {}
+RATE_WINDOW = 6
+BURST_THRESHOLD = 2
+BURST_BLOCK_AFTER = 600
 LOCAL_PROXIES = {"127.0.0.1", "::1", "192.168.1.102"}
 
 
@@ -100,9 +103,24 @@ def security_check():
             d["first"] = now
         else:
             d["count"] += 1
-            if d["count"] > RATE_LIMIT:
-                log_audit_event("RATE_LIMIT", ip_address=ip)
-                return jsonify({"error": "Cok fazla istek!"}), 429
+
+    if ip not in _burst_data:
+        _burst_data[ip] = {"last": now, "fast_since": now}
+    else:
+        b = _burst_data[ip]
+        gap = now - b["last"]
+        b["last"] = now
+        if gap < BURST_THRESHOLD:
+            if now - b["fast_since"] >= BURST_BLOCK_AFTER:
+                log_audit_event("BURST_BLOCK", ip_address=ip)
+                return jsonify({"error": "10 dk boyunca surekli hizli istek - engellendi"}), 429
+        else:
+            b["fast_since"] = now
+
+    if len(_burst_data) > 500:
+        stale = [k for k, v in _burst_data.items() if now - v["last"] > 600]
+        for k in stale:
+            del _burst_data[k]
 
     # === THREAT DETECTION ===
     username = session.get("username") if session.get("logged_in") else None
@@ -153,7 +171,7 @@ def security_check():
 
     if request.path.startswith("/api/"):
         if not session.get("logged_in"):
-            public_apis = ("/api/items", "/api/ohlc/", "/api/stats", "/api/servers", "/api/top-items", "/api/live", "/api/item/", "/api/analytics/", "/api/search", "/api/autocomplete", "/api/price-changes", "/api/endeks-data", "/endeks")
+            public_apis = ("/api/items", "/api/ohlc/", "/api/stats", "/api/servers", "/api/top-items", "/api/live", "/api/item/", "/api/analytics/", "/api/search", "/api/autocomplete", "/api/price-changes", "/api/endeks-data", "/api/analiz/", "/endeks")
             is_public = any(request.path.startswith(p) for p in public_apis)
             if not is_public:
                 token = request.headers.get("X-API-Token", "")
@@ -396,8 +414,8 @@ def api_ohlc(item):
 
 @app.route("/api/live_analysis/<path:item>")
 def api_live_analysis(item):
-    """Sunucu tarafı tüm indicator hesaplamalarını yapar, tek seferde döner.
-    Params: lvl, server, type, hours (varsayılan 24)
+    """Sunucu tarafindaki tum indicator hesaplamalarini yapar, tek seferde doner.
+    Params: lvl, server, type, hours (varsayilan 24)
     """
     from webapp.indicators import compute_all_indicators
     lvl = request.args.get("lvl", "")
@@ -1312,8 +1330,8 @@ def api_endeks_data():
             where_extra += f" AND server IN ({ph})"
             params_extra.extend(matched_servers)
         if filter_item:
-            where_extra += " AND item_name LIKE ?"
-            params_extra.append(f"%{filter_item}%")
+            where_extra += " AND item_name = ?"
+            params_extra.append(filter_item)
 
         # 1) All prices into memory
         rows = db.execute(
@@ -1339,7 +1357,7 @@ def api_endeks_data():
                 all_item_prices[akey] = {"sell": [], "buy": []}
             all_item_prices[akey][t].append(p)
 
-        # 2) Server metadata — group level or individual level
+        # 2) Server metadata - group level or individual level
         if is_group:
             servers = []
             for s in sorted(matched_servers):
@@ -1378,6 +1396,8 @@ def api_endeks_data():
                 for (s, name, lvl), v in srv_item_prices.items():
                     if s != srv:
                         continue
+                    if filter_item and name != filter_item:
+                        continue
                     cnt = len(v["sell"]) + len(v["buy"])
                     items[(name, lvl)] = {"sell": v["sell"], "buy": v["buy"], "count": cnt}
                 ranked = sorted(items.items(), key=lambda x: x[1]["count"], reverse=True)[:10]
@@ -1390,6 +1410,8 @@ def api_endeks_data():
         # 4) Top items overall
         ranked_all = sorted(all_item_prices.items(),
             key=lambda x: len(x[1]["sell"]) + len(x[1]["buy"]), reverse=True)[:30]
+        if filter_item:
+            ranked_all = [(k, v) for k, v in ranked_all if k[0] == filter_item]
         top_items = []
         for k, v in ranked_all:
             srv_list = []
@@ -1424,7 +1446,7 @@ def api_endeks_data():
         item_servers = []
         if filter_item:
             for (s, name, lvl), v in srv_item_prices.items():
-                if filter_item.lower() not in name.lower():
+                if name != filter_item:
                     continue
                 sell_stats = calc_stats(v["sell"])
                 buy_stats = calc_stats(v["buy"])
@@ -1444,8 +1466,8 @@ def api_endeks_data():
             change_where += f" AND server IN ({ph})"
             change_params.extend(matched_servers)
         if filter_item:
-            change_where += " AND item_name LIKE ?"
-            change_params.append(f"%{filter_item}%")
+            change_where += " AND item_name = ?"
+            change_params.append(filter_item)
         change_rows = db.execute(f"SELECT item_name, item_lvl, type, timestamp, price FROM prices {change_where}", change_params).fetchall()
         ch = {}
         for r in change_rows:
@@ -1478,3 +1500,174 @@ def api_endeks_data():
 @app.route("/endeks")
 def endeks_page():
     return render_template("endeks.html")
+
+
+@app.route("/api/analiz/<path:item_name>")
+def api_analiz(item_name):
+    from webapp.database import get_item_stats, get_db, get_all_item_names, _calc_stats
+    all_items = get_all_item_names()
+    matched = item_name
+    item_lower = item_name.lower()
+    for name in all_items:
+        if name.lower() == item_lower:
+            matched = name
+            break
+
+    server = request.args.get("server", "").strip()
+    level = request.args.get("level", "").strip()
+
+    with get_db() as db:
+        all_server_rows = db.execute(
+            "SELECT DISTINCT server FROM prices WHERE item_name=? ORDER BY server",
+            (matched,)
+        ).fetchall()
+        all_servers = [r["server"] for r in all_server_rows]
+
+    server_groups = {}
+    for s in all_servers:
+        parts = s.rsplit(" ", 1)
+        base = parts[0] if len(parts) == 2 and parts[1].isdigit() else s
+        if base not in server_groups:
+            server_groups[base] = []
+        server_groups[base].append(s)
+
+    resolved_servers = []
+    if server:
+        if server in server_groups:
+            resolved_servers = server_groups[server]
+        else:
+            resolved_servers = [server]
+    else:
+        resolved_servers = all_servers
+
+    with get_db() as db:
+        ph = ",".join("?" * len(resolved_servers))
+        lvl_rows = db.execute(
+            f"SELECT DISTINCT item_lvl FROM prices WHERE item_name=? AND server IN ({ph}) ORDER BY item_lvl",
+            [matched] + resolved_servers
+        ).fetchall()
+        levels = [r["item_lvl"] for r in lvl_rows]
+
+    def sort_lvl(l):
+        if l.startswith("+") and l.endswith("R"):
+            return (2, int(l[1:-1]))
+        elif l.startswith("+"):
+            return (1, int(l[1:]))
+        return (0, l)
+    levels.sort(key=sort_lvl)
+
+    if level:
+        levels = [l for l in levels if l == level]
+
+    per_server_level = {}
+    for srv in resolved_servers:
+        with get_db() as db:
+            if level:
+                srv_levels = [level]
+            else:
+                lvl_rows2 = db.execute(
+                    "SELECT DISTINCT item_lvl FROM prices WHERE item_name=? AND server=? ORDER BY item_lvl",
+                    (matched, srv)
+                ).fetchall()
+                srv_levels = [r["item_lvl"] for r in lvl_rows2]
+
+        srv_data = {"levels": {}, "total_sell": 0, "total_buy": 0}
+        for lvl in srv_levels:
+            with get_db() as db:
+                buy_s = _calc_stats(db, matched, lvl, "buy", server=srv)
+                sell_s = _calc_stats(db, matched, lvl, "sell", server=srv)
+
+            srv_data["levels"][lvl] = {"buy": buy_s, "sell": sell_s}
+            if sell_s:
+                srv_data["total_sell"] += sell_s["count"]
+            if buy_s:
+                srv_data["total_buy"] += buy_s["count"]
+        if srv_data["levels"]:
+            per_server_level[srv] = srv_data
+
+    stats_all = get_item_stats(matched, server=server if server else None)
+
+    return jsonify({
+        "item_name": matched,
+        "stats_all": stats_all,
+        "per_server_level": per_server_level,
+        "levels": levels,
+        "servers": all_servers,
+        "server_groups": server_groups,
+    })
+
+
+@app.route("/analiz/<path:item_name>")
+def item_analysis_page(item_name):
+    from webapp.database import get_item_stats, get_db, get_all_item_names, _calc_stats
+    all_items = get_all_item_names()
+    matched = item_name
+    item_lower = item_name.lower()
+    for name in all_items:
+        if name.lower() == item_lower:
+            matched = name
+            break
+
+    with get_db() as db:
+        srv_rows = db.execute(
+            "SELECT DISTINCT server FROM prices WHERE item_name=? ORDER BY server",
+            (matched,)
+        ).fetchall()
+        all_servers = [r["server"] for r in srv_rows]
+
+    server_groups = {}
+    for s in all_servers:
+        parts = s.rsplit(" ", 1)
+        base = parts[0] if len(parts) == 2 and parts[1].isdigit() else s
+        if base not in server_groups:
+            server_groups[base] = []
+        server_groups[base].append(s)
+
+    with get_db() as db:
+        lvl_rows = db.execute(
+            "SELECT DISTINCT item_lvl FROM prices WHERE item_name=? ORDER BY item_lvl",
+            (matched,)
+        ).fetchall()
+        levels = [r["item_lvl"] for r in lvl_rows]
+
+    def sort_lvl(l):
+        if l.startswith("+") and l.endswith("R"):
+            return (2, int(l[1:-1]))
+        elif l.startswith("+"):
+            return (1, int(l[1:]))
+        return (0, l)
+    levels.sort(key=sort_lvl)
+
+    stats_all = get_item_stats(matched)
+
+    per_server_level = {}
+    for srv in all_servers:
+        with get_db() as db:
+            lvl_rows2 = db.execute(
+                "SELECT DISTINCT item_lvl FROM prices WHERE item_name=? AND server=? ORDER BY item_lvl",
+                (matched, srv)
+            ).fetchall()
+            srv_levels = [r["item_lvl"] for r in lvl_rows2]
+
+        srv_data = {"levels": {}, "total_sell": 0, "total_buy": 0}
+        for lvl in srv_levels:
+            with get_db() as db:
+                buy_s = _calc_stats(db, matched, lvl, "buy", server=srv)
+                sell_s = _calc_stats(db, matched, lvl, "sell", server=srv)
+            srv_data["levels"][lvl] = {"buy": buy_s, "sell": sell_s}
+            if sell_s:
+                srv_data["total_sell"] += sell_s["count"]
+            if buy_s:
+                srv_data["total_buy"] += buy_s["count"]
+        if srv_data["levels"]:
+            per_server_level[srv] = srv_data
+
+    return render_template("analiz.html",
+        item_name=matched,
+        stats_all=stats_all,
+        per_server_level=per_server_level,
+        levels=levels,
+        servers=all_servers,
+        server_groups=server_groups,
+        all_items=all_items,
+    )

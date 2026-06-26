@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ item_name }} - Istatistikler - Market Master</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0a0a14;color:#e0e0e0;min-height:100vh}
+
+.navbar{display:flex;justify-content:space-between;align-items:center;height:52px;padding:0 24px;background:#0e0e1c;border-bottom:1px solid #1a1a2e}
+.nav-brand{font-weight:800;color:#e0e0e0;text-decoration:none;font-size:18px;letter-spacing:-0.5px}
+.nav-brand span{color:#26a69a}
+.nav-right{display:flex;align-items:center;gap:16px}
+.nav-right a{color:#888;text-decoration:none;font-size:13px;transition:color .2s}
+.nav-right a:hover{color:#26a69a}
+.nav-right a.active{color:#26a69a;font-weight:600}
+
+.container{max-width:1400px;margin:0 auto;padding:20px 24px}
+
+.back-link{display:inline-flex;align-items:center;gap:6px;color:#26a69a;text-decoration:none;font-size:14px;margin-bottom:16px;transition:color .2s}
+.back-link:hover{color:#2dd4bf}
+
+.item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #1a1a2e}
+.item-header-left{display:flex;align-items:center;gap:16px}
+.item-label{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px}
+.item-name{font-size:28px;font-weight:800;color:#fff}
+.item-header-right{text-align:right}
+.item-levels{font-size:12px;color:#888;line-height:1.6;max-width:500px}
+.item-servers{font-size:12px;color:#666;margin-top:2px}
+
+.filters{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.filter-group{display:flex;align-items:center;gap:6px}
+.filter-group label{font-size:11px;color:#777;text-transform:uppercase;letter-spacing:0.5px}
+.filter-select{background:#12122a;border:1px solid #1a1a3e;border-radius:8px;padding:7px 12px;color:#e0e0e0;font-size:13px;cursor:pointer}
+.filter-select:focus{outline:none;border-color:#26a69a}
+.level-chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:5px 12px;border-radius:14px;font-size:11px;font-weight:600;cursor:pointer;background:#1a1a2e;color:#888;border:1px solid #2a2a3e;transition:all .2s;text-decoration:none}
+.chip:hover,.chip.active{background:#26a69a;color:#fff;border-color:#26a69a}
+
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.summary-card{background:#12122a;border:1px solid #1a1a3e;border-radius:10px;padding:16px 18px}
+.summary-card .card-label{font-size:11px;color:#777;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+.summary-card .card-value{font-size:26px;font-weight:700}
+.summary-card .card-sub{font-size:11px;color:#666;margin-top:4px}
+
+.gauge-wrap{display:flex;align-items:center;justify-content:center;margin-top:8px}
+.gauge{position:relative;width:120px;height:65px;overflow:hidden}
+.gauge svg{width:120px;height:65px}
+.gauge-bg{fill:none;stroke:#1a1a3e;stroke-width:10;stroke-linecap:round}
+.gauge-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .8s ease,stroke .5s}
+.gauge-center{position:absolute;bottom:0;left:50%;transform:translateX(-50%);text-align:center}
+.gauge-value{font-size:20px;font-weight:800;color:#fff}
+.gauge-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px}
+.green{color:#26a69a}
+.red{color:#f23645}
+.blue{color:#2962ff}
+.yellow{color:#f1c40f}
+.purple{color:#9b59b6}
+
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.chart-box{background:#12122a;border:1px solid #1a1a3e;border-radius:10px;padding:16px}
+.chart-box h3{font-size:14px;font-weight:700;color:#e0e0e0;margin-bottom:12px}
+.chart-box canvas{width:100%!important;height:250px!important}
+
+.bubble-section{margin-bottom:20px}
+.bubble-section h3{font-size:14px;font-weight:700;color:#e0e0e0;margin-bottom:12px}
+.bubble-chart-wrap{background:#12122a;border:1px solid #1a1a3e;border-radius:10px;padding:16px}
+
+.server-section{background:#12122a;border:1px solid #1a1a3e;border-radius:10px;margin-bottom:12px;overflow:hidden}
+.server-header{padding:14px 18px;border-bottom:1px solid #1a1a2e;display:flex;justify-content:space-between;align-items:center}
+.server-header h3{font-size:15px;font-weight:700;color:#fff}
+.server-header .server-info{font-size:12px;color:#888}
+
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#0e0e1c;color:#777;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;padding:8px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid #1a1a2e}
+th:first-child{text-align:center}
+td{padding:7px 10px;color:#ccc;border-bottom:1px solid #0e0e1c;text-align:right;white-space:nowrap;font-family:'SF Mono',Consolas,monospace;font-size:11.5px}
+td:first-child{text-align:center;color:#f1c40f;font-weight:700;font-family:-apple-system,sans-serif}
+tr:hover td{background:#1a1a2e}
+.price-positive{color:#26a69a}
+.price-zero{color:#555}
+.hata-high{color:#f23645}
+.hata-mid{color:#e67e22}
+.hata-low{color:#26a69a}
+
+.empty-row td{color:#444;text-align:center;padding:12px}
+
+@media(max-width:900px){
+  .summary-grid{grid-template-columns:repeat(2,1fr)}
+  .charts-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="nav-brand" href="/">MARKET<span>MASTER</span></a>
+  <div class="nav-right">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/item">Item</a>
+    <a href="/endeks">Endeks</a>
+    <a href="/analiz/{{ item_name|urlencode }}" class="active">Analiz</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <a class="back-link" href="/endeks">&#8592; Endekse Don</a>
+
+  <div class="item-header">
+    <div class="item-header-left">
+      <div>
+        <div class="item-label">Endeks</div>
+        <div class="item-name">{{ item_name }}</div>
+      </div>
+    </div>
+    <div class="item-header-right">
+      <div class="item-levels" id="levelList">
+        {% for lvl in levels %}{{ lvl }}{% if not loop.last %}, {% endif %}{% endfor %}
+      </div>
+      <div class="item-servers">{{ server_groups|length }} sunucu</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <label>Sunucu:</label>
+      <select class="filter-select" id="serverSelect" onchange="reloadData()">
+        <option value="">Tum Sunucular</option>
+        {% for base, members in server_groups.items() %}
+        <option value="{{ base }}">{{ base }} ({{ members|length }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Seviye:</label>
+      <div class="level-chips" id="levelChips">
+        <span class="chip active" data-lvl="" onclick="selectLevel('')">Tumu</span>
+        {% for lvl in levels %}
+        <span class="chip" data-lvl="{{ lvl }}" onclick="selectLevel('{{ lvl }}')">{{ lvl }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div id="summarySection"></div>
+  <div id="chartsSection"></div>
+  <div id="bubbleSection"></div>
+  <div id="tablesSection"></div>
+
+</div>
+
+<script>
+const ITEM_NAME = {{ item_name|tojson }};
+let currentServer = '';
+let currentLevel = '';
+let sellChart = null;
+let buyChart = null;
+let bubbleChart = null;
+
+function selectLevel(lvl) {
+  currentLevel = lvl;
+  document.querySelectorAll('#levelChips .chip').forEach(c => c.classList.remove('active'));
+  document.querySelector('#levelChips .chip[data-lvl="'+lvl+'"]').classList.add('active');
+  reloadData();
+}
+
+function fmt(v) {
+  if (v == null || v === 0) return '-';
+  if (v >= 1000000) return (v/1000000).toFixed(1) + 'M';
+  if (v >= 1000) return (v/1000).toFixed(0) + 'K';
+  return v.toLocaleString('tr-TR');
+}
+
+function fmtFull(v) {
+  if (v == null || v === 0) return '-';
+  return v.toLocaleString('tr-TR');
+}
+
+function hataClass(h) {
+  const trust = 100 - h;
+  if (trust < 50) return 'hata-high';
+  if (trust < 70) return 'hata-mid';
+  return 'hata-low';
+}
+
+function reloadData() {
+  currentServer = document.getElementById('serverSelect').value;
+  let url = '/api/analiz/' + encodeURIComponent(ITEM_NAME);
+  let params = [];
+  if (currentServer) params.push('server=' + encodeURIComponent(currentServer));
+  if (currentLevel) params.push('level=' + encodeURIComponent(currentLevel));
+  if (params.length) url += '?' + params.join('&');
+
+  fetch(url).then(r => r.json()).then(data => renderData(data));
+}
+
+function renderData(data) {
+  const sa = data.stats_all;
+  const psl = data.per_server_level;
+  const srvs = data.servers;
+  const lvls = data.levels;
+
+  let sumHtml = '';
+  if (sa && sa.sell && sa.buy) {
+    const makas = sa.buy.median > 0 ? ((sa.sell.median - sa.buy.median) / sa.buy.median * 100).toFixed(1) : 0;
+    const hata = sa.sell.hata || 0;
+    const trust = Math.max(0, Math.min(100, 100 - hata));
+    let trustColor = '#26a69a';
+    let trustLabel = 'Cok Guvenilir';
+    if (trust < 50) { trustColor = '#f23645'; trustLabel = 'Guvenilmez'; }
+    else if (trust < 70) { trustColor = '#e67e22'; trustLabel = 'Orta'; }
+    else if (trust < 85) { trustColor = '#f1c40f'; trustLabel = 'Iyi'; }
+    const circumference = Math.PI * 55;
+    const offset = circumference - (trust / 100) * circumference;
+    sumHtml = `<div class="summary-grid">
+      <div class="summary-card"><div class="card-label">Ort. Satis (Medyan)</div><div class="card-value green">${fmtFull(sa.sell.median)}</div><div class="card-sub">Toplam ${sa.sell.count} ilan</div></div>
+      <div class="summary-card"><div class="card-label">Ort. Alis (Medyan)</div><div class="card-value blue">${fmtFull(sa.buy.median)}</div><div class="card-sub">Toplam ${sa.buy.count} ilan</div></div>
+      <div class="summary-card"><div class="card-label">Makas</div><div class="card-value ${makas>0?'green':'red'}">%${makas}</div><div class="card-sub">Alis-Satis Farki</div></div>
+      <div class="summary-card">
+        <div class="card-label">Guven Skoru</div>
+        <div class="gauge-wrap">
+          <div class="gauge">
+            <svg viewBox="0 0 120 65">
+              <path class="gauge-bg" d="M 10 60 A 50 50 0 0 1 110 60" />
+              <path class="gauge-fill" d="M 10 60 A 50 50 0 0 1 110 60"
+                stroke="${trustColor}"
+                stroke-dasharray="${circumference}"
+                stroke-dashoffset="${offset}" />
+            </svg>
+            <div class="gauge-center">
+              <div class="gauge-value" style="color:${trustColor}">%${Math.round(trust)}</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-sub" style="text-align:center;color:${trustColor}">${trustLabel}</div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('summarySection').innerHTML = sumHtml;
+
+  let chartsHtml = `<div class="charts-grid">
+    <div class="chart-box"><h3>Sunucu Bazli Satis Fiyatlari</h3><canvas id="sellChart"></canvas></div>
+    <div class="chart-box"><h3>Sunucu Bazli Alis Fiyatlari</h3><canvas id="buyChart"></canvas></div>
+  </div>`;
+  document.getElementById('chartsSection').innerHTML = chartsHtml;
+
+  let bubbleHtml = `<div class="bubble-section"><h3>Fiyat Baloncuklari (Seviye Bazli)</h3><div class="bubble-chart-wrap"><canvas id="bubbleChart"></canvas></div></div>`;
+  document.getElementById('bubbleSection').innerHTML = bubbleHtml;
+
+  if (sellChart) { sellChart.destroy(); sellChart = null; }
+  if (buyChart) { buyChart.destroy(); buyChart = null; }
+  if (bubbleChart) { bubbleChart.destroy(); bubbleChart = null; }
+
+  const serverNames = Object.keys(psl);
+  const sellMeds = serverNames.map(s => {
+    const lvls2 = psl[s].levels;
+    const vals = Object.values(lvls2).filter(l => l.sell).map(l => l.sell.median);
+    return vals.length ? Math.max(...vals) : 0;
+  });
+  const buyMeds = serverNames.map(s => {
+    const lvls2 = psl[s].levels;
+    const vals = Object.values(lvls2).filter(l => l.buy).map(l => l.buy.median);
+    return vals.length ? Math.max(...vals) : 0;
+  });
+
+  const chartOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#888', font: { size: 10 } }, grid: { color: '#1a1a2e' } },
+      y: { ticks: { color: '#888', font: { size: 10 }, callback: v => v >= 1000000 ? (v/1000000).toFixed(0)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v }, grid: { color: '#1a1a2e' } }
+    }
+  };
+
+  if (serverNames.length > 0) {
+    sellChart = new Chart(document.getElementById('sellChart'), {
+      type: 'bar', data: { labels: serverNames, datasets: [{ data: sellMeds, backgroundColor: serverNames.map((_,i) => `hsl(${140+i*30},60%,50%)`), borderRadius: 4 }] }, options: chartOpts
+    });
+    buyChart = new Chart(document.getElementById('buyChart'), {
+      type: 'bar', data: { labels: serverNames, datasets: [{ data: buyMeds, backgroundColor: serverNames.map((_,i) => `hsl(${210+i*30},60%,50%)`), borderRadius: 4 }] }, options: chartOpts
+    });
+  }
+
+  const bubbleData = [];
+  const colors = ['#26a69a','#2962ff','#f23645','#f1c40f','#9b59b6','#e67e22','#1abc9c','#3498db'];
+  let ci = 0;
+  for (const srv of serverNames) {
+    const lvls2 = psl[srv].levels;
+    for (const [lvl, d] of Object.entries(lvls2)) {
+      if (d.sell) {
+        bubbleData.push({ x: lvl, y: d.sell.median, r: Math.min(Math.max(d.sell.count / 3, 3), 20), srv: srv, type: 'sell', hata: d.sell.hata });
+      }
+      if (d.buy) {
+        bubbleData.push({ x: lvl, y: d.buy.median, r: Math.min(Math.max(d.buy.count / 3, 3), 20), srv: srv, type: 'buy', hata: d.buy.hata });
+      }
+    }
+    ci++;
+  }
+
+  if (bubbleData.length > 0) {
+    bubbleChart = new Chart(document.getElementById('bubbleChart'), {
+      type: 'bubble',
+      data: {
+        datasets: [
+          {
+            label: 'Satis',
+            data: bubbleData.filter(b => b.type === 'sell'),
+            backgroundColor: bubbleData.filter(b => b.type === 'sell').map(b => {
+              const trust = 100 - (b.hata||0);
+              const h = trust < 50 ? 'rgba(242,54,69,0.5)' : trust < 70 ? 'rgba(230,126,34,0.5)' : 'rgba(38,166,154,0.5)';
+              return h;
+            }),
+            borderColor: bubbleData.filter(b => b.type === 'sell').map(b => {
+              const trust = 100 - (b.hata||0);
+              return trust < 50 ? '#f23645' : trust < 70 ? '#e67e22' : '#26a69a';
+            }),
+            borderWidth: 1.5
+          },
+          {
+            label: 'Alis',
+            data: bubbleData.filter(b => b.type === 'buy'),
+            backgroundColor: 'rgba(41,98,255,0.4)',
+            borderColor: '#2962ff',
+            borderWidth: 1.5
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                const b = ctx.raw;
+                return b.srv + ' ' + b.x + ' ' + ctx.dataset.label + ': ' + fmtFull(b.y) + ' (Guven: %' + Math.round(100-(b.hata||0)) + ')';
+              }
+            }
+          },
+          legend: { labels: { color: '#888', font: { size: 12 } } }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Seviye', color: '#888' }, ticks: { color: '#888' }, grid: { color: '#1a1a2e' } },
+          y: { title: { display: true, text: 'Fiyat', color: '#888' }, ticks: { color: '#888', callback: v => v >= 1000000 ? (v/1000000).toFixed(0)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v }, grid: { color: '#1a1a2e' } }
+        }
+      }
+    });
+  }
+
+  let tablesHtml = '';
+  for (const srv of serverNames) {
+    const sd = psl[srv];
+    tablesHtml += `<div class="server-section"><div class="server-header"><h3>${srv}</h3><div class="server-info">${sd.total_sell} satis &bull; ${sd.total_buy} alis</div></div><div class="table-scroll"><table><thead><tr>
+      <th>LVL</th><th>ADET</th><th>SATIS MIN</th><th>SATIS MAX</th><th>SATIS ORT</th><th>SATIS MEDYAN</th><th>SATIS STD</th><th>SATIS Q1</th><th>SATIS Q3</th><th>SATIS IQR</th><th>SATIS GV.%</th>
+      <th>ALIS MIN</th><th>ALIS MAX</th><th>ALIS ORT</th><th>ALIS MEDYAN</th><th>ALIS Q1</th><th>ALIS Q3</th><th>ALIS IQR</th><th>ALIS GV.%</th>
+    </tr></thead><tbody>`;
+
+    for (const [lvl, d] of Object.entries(sd.levels)) {
+      const s = d.sell;
+      const b = d.buy;
+      const cnt = (s && s.count) || (b && b.count) || 0;
+      tablesHtml += `<tr><td>${lvl}</td><td>${cnt}</td>`;
+      tablesHtml += `<td class="${s && s.min>0?'price-positive':'price-zero'}">${s ? fmtFull(s.min) : '-'}</td>`;
+      tablesHtml += `<td class="${s && s.max>0?'price-positive':'price-zero'}">${s ? fmtFull(s.max) : '-'}</td>`;
+      tablesHtml += `<td>${s ? fmtFull(s.avg) : '-'}</td>`;
+      tablesHtml += `<td class="green">${s ? fmtFull(s.median) : '-'}</td>`;
+      tablesHtml += `<td>${s ? fmtFull(s.std) : '-'}</td>`;
+      tablesHtml += `<td>${s ? fmtFull(s.q1) : '-'}</td>`;
+      tablesHtml += `<td>${s ? fmtFull(s.q3) : '-'}</td>`;
+      tablesHtml += `<td>${s ? fmtFull(s.iqr) : '-'}</td>`;
+      tablesHtml += `<td class="${s ? hataClass(s.hata) : ''}">${s ? Math.round(100-s.hata)+'%' : '-'}</td>`;
+      tablesHtml += `<td class="${b && b.min>0?'price-positive':'price-zero'}">${b ? fmtFull(b.min) : '-'}</td>`;
+      tablesHtml += `<td class="${b && b.max>0?'price-positive':'price-zero'}">${b ? fmtFull(b.max) : '-'}</td>`;
+      tablesHtml += `<td>${b ? fmtFull(b.avg) : '-'}</td>`;
+      tablesHtml += `<td class="blue">${b ? fmtFull(b.median) : '-'}</td>`;
+      tablesHtml += `<td>${b ? fmtFull(b.q1) : '-'}</td>`;
+      tablesHtml += `<td>${b ? fmtFull(b.q3) : '-'}</td>`;
+      tablesHtml += `<td>${b ? fmtFull(b.iqr) : '-'}</td>`;
+      tablesHtml += `<td class="${b ? hataClass(b.hata) : ''}">${b ? Math.round(100-b.hata)+'%' : '-'}</td>`;
+      tablesHtml += `</tr>`;
+    }
+    tablesHtml += `</tbody></table></div></div>`;
+  }
+  if (!tablesHtml) tablesHtml = '<div style="text-align:center;padding:40px;color:#555">Veri bulunamadi</div>';
+  document.getElementById('tablesSection').innerHTML = tablesHtml;
+}
+
+reloadData();
+</script>
+</body>
+</html>

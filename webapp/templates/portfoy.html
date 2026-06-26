@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfoy - Market Master</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#d1d4dc}
+.top{background:linear-gradient(13deg,#0d0d1a,#1a0a0a);border-bottom:3px solid #e94560;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+.top .logo{font-size:22px;font-weight:900;color:#e94560;text-decoration:none}
+.top .nav a{color:#666;text-decoration:none;font-size:12px;margin-left:14px}
+.top .nav a:hover{color:#e94560}
+.container{max-width:1100px;margin:0 auto;padding:20px}
+h1{font-size:20px;color:#fff;margin-bottom:4px}
+.sub{color:#555;font-size:12px;margin-bottom:16px}
+.stats-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.stat-box{background:#111122;border:1px solid #1a1a2e;border-radius:8px;padding:10px 16px;text-align:center}
+.stat-box .l{color:#555;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+.stat-box .v{font-size:18px;font-weight:700;margin-top:2px}
+.stat-box .v.green{color:#2ecc71}
+.stat-box .v.red{color:#e74c3c}
+.stat-box .v.gold{color:#f1c40f}
+table{width:100%;border-collapse:collapse;font-size:12px;background:#111122;border-radius:8px;overflow:hidden;margin-top:12px}
+thead{background:#0d0d1a}
+th{padding:10px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#555;border-bottom:1px solid #1a1a2e}
+td{padding:9px 12px;border-bottom:1px solid #0f0f1a}
+tr:hover{background:rgba(233,69,96,.03)}
+.item-name{color:#fff;font-weight:600}
+.item-lvl{color:#f1c40f;font-weight:600}
+.item-price{font-family:monospace;font-weight:700;color:#2ecc71}
+.item-strat{font-size:10px;padding:2px 8px;border-radius:3px;font-weight:600}
+.item-strat.auto{background:rgba(46,204,113,.12);color:#2ecc71}
+.item-strat.manuel{background:rgba(233,69,96,.12);color:#e94560}
+.slogan{background:#111122;border:1px solid #1a1a2e;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#888;font-style:italic}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="logo" href="/">MARKET MASTER</a>
+  <div class="nav">
+    <a href="/portfoy">Portfoy</a>
+    <a href="/api/portfoy/export-csv">CSV Indir</a>
+  </div>
+</div>
+<div class="container">
+  <h1>Portfoy Listesi</h1>
+  <div class="sub">{{ items|length }} item</div>
+
+  {% if slogan_lines %}
+  <div class="slogan">{{ slogan_lines|join(' | ') }}</div>
+  {% endif %}
+
+  <div class="stats-bar">
+    <div class="stat-box"><div class="l">Toplam Item</div><div class="v gold">{{ items|length }}</div></div>
+    <div class="stat-box"><div class="l">Sunucu</div><div class="v green">{{ servers|length }}</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Item</th><th>Seviye</th><th>Alis</th><th>Strateji</th><th>Satis</th><th>Adet</th><th>Kar</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for it in items %}
+      <tr>
+        <td style="color:#555">{{ loop.index }}</td>
+        <td class="item-name">{{ it.name }}</td>
+        <td class="item-lvl">{{ it.lvl }}</td>
+        <td class="item-price">{{ "{:,.0f}".format(it.buy_price|default(0)|float) }}</td>
+        <td><span class="item-strat {{ (it.buy_strategy|default('Auto'))|lower }}">{{ it.buy_strategy|default('Auto') }}</span></td>
+        <td class="item-price">{{ "{:,.0f}".format(it.sell_price|default(0)|float) }}</td>
+        <td>{{ it.count|default(1) }}</td>
+        <td style="color:{{ '#2ecc71' if it.profit|default(0) > 0 else '#e74c3c' }}">{{ "{:,.0f}".format(it.profit|default(0)|float) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

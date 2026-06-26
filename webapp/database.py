@@ -168,7 +168,7 @@ def insert_prices_batch(prices):
 def _time_filter(hours=None):
     if hours and hours > 0:
         from datetime import datetime, timedelta
-        cutoff = (datetime.utcnow() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        cutoff = (datetime.utcnow() - timedelta(hours=hours)).strftime("%Y-%m-%d")
         return f" AND timestamp >= ?", cutoff
     return "", None
 
@@ -176,35 +176,56 @@ def _time_filter(hours=None):
 def _calc_stats(db, item, lvl, ptype, hours=None, server=None):
     tf, tf_param = _time_filter(hours)
     sf = ""
-    params = [item, lvl, norm_type(ptype)]
+    lf = ""
+    params = [item]
+    if lvl:
+        lf = " AND item_lvl=?"
+        params.append(lvl)
+    params.append(norm_type(ptype))
     if server:
         sf = " AND LOWER(TRIM(server)) LIKE LOWER(?)"
         params.append(f"%{server}%")
     if tf_param:
         params.append(tf_param)
     rows = db.execute(
-        f"SELECT price, seller FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)=?{sf}{tf} ORDER BY price",
+        f"SELECT price, seller FROM prices WHERE item_name=?{lf} AND LOWER(type)=?{sf}{tf} ORDER BY price",
         params,
     ).fetchall()
     if not rows:
         return None
-    vals = [r["price"] for r in rows]
-    unique_sellers = set(r["seller"] for r in rows if r["seller"])
+    all_vals = [r["price"] for r in rows]
+    all_sellers = set(r["seller"] for r in rows if r["seller"])
+    n_all = len(all_vals)
+    ns = len(all_sellers) if all_sellers else n_all
+    vals_sorted = sorted(all_vals)
+    raw_median = vals_sorted[n_all // 2] if n_all % 2 else (vals_sorted[n_all // 2 - 1] + vals_sorted[n_all // 2]) // 2
+    q1 = vals_sorted[int(n_all * 0.25)] if n_all >= 4 else vals_sorted[0]
+    q3 = vals_sorted[int(n_all * 0.75)] if n_all >= 4 else vals_sorted[-1]
+    upper_limit = min(q3, raw_median * 2) if raw_median > 0 else q3
+    lower_limit = max(q1, raw_median * 0.5) if raw_median > 0 else q1
+    vals = [v for v in all_vals if lower_limit <= v <= upper_limit]
+    if len(vals) < 3:
+        vals = all_vals
     n = len(vals)
-    ns = len(unique_sellers) if unique_sellers else n
-    if ns >= 20:
-        vals_sorted = sorted(vals)
-        median = vals_sorted[n // 2] if n % 2 else (vals_sorted[n // 2 - 1] + vals_sorted[n // 2]) // 2
-        price_used = median
-    elif ns > 0:
-        price_used = vals[0]
-    else:
-        price_used = vals[0]
+    vals_sorted = sorted(vals)
+    median = vals_sorted[n // 2] if n % 2 else (vals_sorted[n // 2 - 1] + vals_sorted[n // 2]) // 2
+    trimmed_q1 = vals_sorted[n // 4] if n >= 4 else vals_sorted[0]
+    trimmed_q3 = vals_sorted[3 * n // 4] if n >= 4 else vals_sorted[-1]
+    mean_val = sum(vals) / n
+    variance = sum((v - mean_val) ** 2 for v in vals) / n
+    std = round(variance ** 0.5)
+    iqr = trimmed_q3 - trimmed_q1
+    hata = round((std / mean_val) * 100, 1) if mean_val > 0 else 0
     return {
-        "min": vals[0],
-        "max": vals[-1],
-        "avg": round(sum(vals) / n),
-        "median": price_used,
+        "min": vals_sorted[0],
+        "max": vals_sorted[-1],
+        "avg": round(mean_val),
+        "median": median,
+        "q1": trimmed_q1,
+        "q3": trimmed_q3,
+        "std": std,
+        "iqr": iqr,
+        "hata": hata,
         "count": n,
         "sellers": ns,
     }
@@ -214,14 +235,18 @@ def get_item_stats(item, lvl="", hours=None, server=None):
     with get_db() as db:
         tf, tf_param = _time_filter(hours)
         sf = ""
-        params = [item, lvl]
+        lf = ""
+        params = [item]
+        if lvl:
+            lf = " AND item_lvl=?"
+            params.append(lvl)
         if server:
             sf = " AND LOWER(TRIM(server)) LIKE LOWER(?)"
             params.append(f"%{server}%")
         if tf_param:
             params.append(tf_param)
         cnt = db.execute(
-            f"SELECT COUNT(*) FROM prices WHERE item_name=? AND item_lvl=?{sf}{tf}", params
+            f"SELECT COUNT(*) FROM prices WHERE item_name=?{lf}{sf}{tf}", params
         ).fetchone()[0]
         if cnt == 0:
             return None
@@ -721,7 +746,7 @@ def get_previous_prices(item, lvl="", server=None):
             elif len(rows) == 1:
                 result[ptype] = {"current": rows[0][0], "previous": 0}
             else:
-                result[ptype] = {"current": rows[0][0], "previous": 0}
+                result[ptype] = {"current": 0, "previous": 0}
         return result
 
 

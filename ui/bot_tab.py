@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                                 QGroupBox, QGridLayout, QMessageBox, QFrame,
                                 QTabWidget, QComboBox, QFileDialog)
 from PySide6.QtCore import Qt, QTimer
+import queue
 from datetime import datetime
 
 try:
@@ -241,6 +242,7 @@ class BotTab:
             "entry_time": entry_time, "scan_queue": [], "stop": threading.Event(),
             "db_combo": db_combo, "btn_browse": btn_browse, "db_path_label": db_path_label,
             "auto_mode": auto_mode, "slot_combo": slot_combo,
+            "log_queue": queue.Queue(),
         }
         tab._g = g
 
@@ -256,14 +258,29 @@ class BotTab:
         btn_browse.clicked.connect(lambda: self._browse_db(g))
         slot_combo.currentIndexChanged.connect(lambda: self._slot_changed(g))
 
+        log_timer = QTimer()
+        log_timer.timeout.connect(lambda lb=log_box, lq=g["log_queue"]: self._drain_log(lb, lq))
+        log_timer.start(100)
+        g["log_timer"] = log_timer
+
         return g
 
     def _log(self, g, msg):
         formatted = f"[{datetime.now().strftime('%H:%M:%S')}] {msg}"
-        if threading.current_thread() is threading.main_thread():
-            g["log_box"].append(formatted)
-        else:
-            QTimer.singleShot(0, lambda m=formatted: g["log_box"].append(m))
+        try:
+            from utils.logger import get_logger
+            get_logger().info(msg)
+        except Exception:
+            pass
+        g["log_queue"].put(formatted)
+
+    def _drain_log(self, log_box, log_queue):
+        while not log_queue.empty():
+            try:
+                msg = log_queue.get_nowait()
+                log_box.append(msg)
+            except queue.Empty:
+                break
 
     def _add_item(self, g):
         name = g["entry"].text().strip()
@@ -367,12 +384,7 @@ class BotTab:
         start_time = time.time()
         total_items = sum(len(t["lvls"]) for t in queue)
 
-        self._log(g, "=" * 40)
-        self._log(g, f"TARAMA BASLADI")
-        self._log(g, f"  Item sayisi: {len(queue)} ({total_items} seviye)")
-        self._log(g, f"  Sunucular: {', '.join(servers)}")
-        self._log(g, f"  Hedef DB: {os.path.basename(g['db_path'])}")
-        self._log(g, "=" * 40)
+        self._log(g, f"Tarama basladi... {len(queue)} item, {', '.join(servers)}")
 
         server_results = {}
         server_counts = {}
@@ -380,7 +392,6 @@ class BotTab:
         def worker(srv):
             nonlocal cancelled
             all_r = []
-            self._log(g, f"[{srv}] Tarama basliyor...")
             scanned = 0
             for task in queue:
                 if g["stop"].is_set():
@@ -402,7 +413,6 @@ class BotTab:
                     time.sleep(0.5)
             server_results[srv] = all_r
             server_counts[srv] = len(all_r)
-            self._log(g, f"[{srv}] TAMAMLANDI - {len(all_r)} kayit")
 
         threads = [threading.Thread(target=worker, args=(s,), daemon=False) for s in servers]
         for t in threads:
@@ -413,15 +423,8 @@ class BotTab:
         duration = time.time() - start_time
         total_results = sum(server_counts.values())
 
-        self._log(g, "")
-        self._log(g, "=" * 40)
         if not cancelled:
-            self._log(g, f"TARAMA TAMAMLANDI!")
-            self._log(g, f"  Sure: {int(duration // 60)}dk {int(duration % 60)}sn")
-            self._log(g, f"  Toplam sonuc: {total_results} kayit")
-            for srv, cnt in server_counts.items():
-                self._log(g, f"    {srv}: {cnt} kayit")
-            self._log(g, f"  Hedef: {os.path.basename(g['db_path'])}")
+            self._log(g, f"Tarama tamamlandi! {total_results} kayit, {int(duration // 60)}dk {int(duration % 60)}sn")
 
             all_results = []
             for srv_results in server_results.values():
@@ -433,12 +436,12 @@ class BotTab:
                     self._log(g, f"  Web sunucusuna gonderiliyor...")
                     self._push_web(all_results)
 
-            self._log(g, "=" * 40)
+            self._log(g, "Islem tamamlandi.")
             self.master.update_autocomplete_data()
         else:
-            self._log(g, f"TARAMA DURDURULDU! ({int(duration)}sn sonra)")
-            self._log(g, f"  O ana kadar: {total_results} kayit")
-            self._log(g, "=" * 40)
+            self._log(g, f"Tarama durduruldu! {total_results} kayit alindi.")
+
+        self._log(g, "")
 
         with self.master.stats_cache_lock:
             self.master.stats_cache.clear()
@@ -530,11 +533,8 @@ class BotTab:
             self._log(g, "En az bir sunucu secin!")
             return
 
-        self._log(g, "=" * 40)
-        self._log(g, "TUM ITEMLAR CEKILIYOR")
+        self._log(g, "Veri cekimi basladi...")
         self._log(g, f"  Sunucular: {', '.join(servers)}")
-        self._log(g, f"  Hedef DB: {os.path.basename(g['db_path'])}")
-        self._log(g, "=" * 40)
 
         server_totals = {}
 
@@ -544,12 +544,12 @@ class BotTab:
                 srv = parts[1]
                 idx = parts[2]
                 total = parts[3]
-                self._log(g, f"[{srv}] Taraniyor... ({idx}/{total})")
+                self._log(g, f"[{srv}] Basliyor... ({idx}/{total})")
             elif parts[0] == "SERVER_DONE":
                 srv = parts[1]
                 count = int(parts[2])
                 server_totals[srv] = count
-                self._log(g, f"[{srv}] TAMAMLANDI - {count} item")
+                self._log(g, f"[{srv}] Tamamlandi - {count} item")
             QTimer.singleShot(0, lambda c=cnt: g["lbl_status"].setText(f"Toplam: {c} item"))
 
         try:
@@ -558,21 +558,14 @@ class BotTab:
                 levels=list(range(11)), reverse_levels=list(range(1, 22)))
             duration = time.time() - start_time
             if results:
-                self._log(g, "")
-                self._log(g, "=" * 40)
-                self._log(g, "TUM ITEMLAR TAMAMLANDI!")
-                self._log(g, f"  Sure: {int(duration // 60)}dk {int(duration % 60)}sn")
-                self._log(g, f"  Toplam: {len(results)} item cekildi")
-                for srv, cnt in server_totals.items():
-                    self._log(g, f"    {srv}: {cnt} item")
-                self._log(g, f"  Hedef: {os.path.basename(g['db_path'])}")
+                self._log(g, f"Veri cekimi tamamlandi! {len(results)} item, {int(duration // 60)}dk {int(duration % 60)}sn")
                 self._log(g, f"  Veritabanina kaydediliyor...")
                 self._save_to_db(results, g["db_path"], g["log_box"])
                 if g["push_to_web"]:
                     self._log(g, f"  Web sunucusuna gonderiliyor...")
                     self._push_web(results)
                 self.master.update_autocomplete_data()
-                self._log(g, "=" * 40)
+                self._log(g, "Islem tamamlandi.")
             else:
                 self._log(g, "Sonuc bulunamadi.")
         except Exception as e:

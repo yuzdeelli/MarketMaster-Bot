@@ -159,16 +159,16 @@ class MarketAnalyzer:
 
             if start_date:
                 query += " AND timestamp >= ?"
-                params.append(start_date)
+                params.append(start_date[:10])
             elif time_limit_minutes:
                 from datetime import timedelta
-                cutoff_time = (datetime.utcnow() - timedelta(minutes=int(time_limit_minutes))).strftime('%Y-%m-%d %H:%M:%S')
+                cutoff_time = (datetime.utcnow() - timedelta(minutes=int(time_limit_minutes))).strftime('%Y-%m-%d')
                 query += " AND timestamp >= ?"
                 params.append(cutoff_time)
 
             if end_date:
                 query += " AND timestamp <= ?"
-                params.append(end_date)
+                params.append(end_date[:10])
 
             with self.db.get_connection() as conn:
                 df = pd.read_sql_query(query, conn, params=tuple(params))
@@ -193,10 +193,14 @@ class MarketAnalyzer:
                     s_series = s_clean.sort_values().iloc[:min_len].reset_index(drop=True)
                     b_series = b_clean.sort_values().iloc[:min_len].reset_index(drop=True)
                     try:
-                        cov = s_series.cov(b_series)
-                        corr = s_series.corr(b_series)
-                        relational_stats["covariance"] = 0 if pd.isna(cov) else cov
-                        relational_stats["correlation"] = 0 if pd.isna(corr) else corr
+                        if s_series.std() == 0 or b_series.std() == 0:
+                            relational_stats["covariance"] = 0
+                            relational_stats["correlation"] = 0
+                        else:
+                            cov = s_series.cov(b_series)
+                            corr = s_series.corr(b_series)
+                            relational_stats["covariance"] = 0 if pd.isna(cov) else cov
+                            relational_stats["correlation"] = 0 if pd.isna(corr) else corr
                     except Exception:
                         pass
 

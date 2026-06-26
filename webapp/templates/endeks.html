@@ -438,7 +438,7 @@ function renderGainersLosers(changes){
   const losers=items.sort((a,b)=>a.change_pct-b.change_pct).slice(0,15);
   const fill=(tbody,list,cls)=>{
     tbody.innerHTML=list.map(it=>`<tr>
-      <td><a href="/item/${encodeURIComponent(it.item)}" target="_blank" class="item-click">${(it.item||'').substring(0,20)}</a></td>
+      <td><a href="/analiz/${encodeURIComponent(it.item)}" target="_blank" class="item-click">${(it.item||'').substring(0,20)}</a></td>
       <td style="color:#f1c40f">${it.lvl||'+'}</td>
       <td class="price">${fmt(it.sell)}</td>
       <td class="${cls}">${it.change_pct>0?'+':''}${it.change_pct}%</td>
@@ -464,7 +464,7 @@ function renderServerTables(serverTop, filters){
     if(!items||!items.length)return;
     let html=`<div class="table-box" style="margin-bottom:12px"><h3>${srv} - En Aktif Itemlar</h3><table><thead><tr><th>Item</th><th>Lvl</th><th>Satis Medyan</th><th>Alis Medyan</th><th>Ilan</th></tr></thead><tbody>`;
     items.forEach(it=>{
-      html+=`<tr><td><a href="/item/${encodeURIComponent(it.item)}" target="_blank" class="item-click">${it.item}</a></td><td style="color:#f1c40f">${it.lvl||'+'}</td><td class="price green">${fmt(it.med_sell)}</td><td class="price red">${fmt(it.med_buy)}</td><td>${it.count}</td></tr>`;
+      html+=`<tr><td><a href="/analiz/${encodeURIComponent(it.item)}" target="_blank" class="item-click">${it.item}</a></td><td style="color:#f1c40f">${it.lvl||'+'}</td><td class="price green">${fmt(it.med_sell)}</td><td class="price red">${fmt(it.med_buy)}</td><td>${it.count}</td></tr>`;
     });
     html+=`</tbody></table></div>`;
     container.innerHTML+=html;
@@ -481,7 +481,7 @@ function renderLiquidTable(items){
     const srvs=(it.servers||[]).join(', ')||'-';
     return `<tr>
       <td style="color:#555">${i+1}</td>
-      <td><a href="/item/${encodeURIComponent(it.item)}" target="_blank" class="item-click">${it.item}</a></td>
+      <td><a href="/analiz/${encodeURIComponent(it.item)}" target="_blank" class="item-click">${it.item}</a></td>
       <td style="color:#f1c40f">${it.lvl||'+'}</td>
       <td class="price green">${fmt(sell)}</td>
       <td class="price red">${fmt(buy)}</td>
@@ -493,7 +493,7 @@ function renderLiquidTable(items){
 }
 
 function searchItem(name){
-  window.open('/item/'+encodeURIComponent(name),'_blank');
+  window.open('/analiz/'+encodeURIComponent(name),'_blank');
 }
 
 function renderItemResult(itemServers,filters){
@@ -511,7 +511,7 @@ function renderItemResult(itemServers,filters){
     const makas=sell&&buy?(((sell-buy)/buy)*100).toFixed(1):'-';
     return `<tr>
       <td style="font-weight:700">${it.server}</td>
-      <td><a href="/item/${encodeURIComponent(it.item)}" target="_blank" class="item-click">${it.item}</a></td>
+      <td><a href="/analiz/${encodeURIComponent(it.item)}" target="_blank" class="item-click">${it.item}</a></td>
       <td style="color:#f1c40f">${it.lvl||'+'}</td>
       <td class="price green">${fmt(sell)}</td>
       <td class="price red">${fmt(buy)}</td>
