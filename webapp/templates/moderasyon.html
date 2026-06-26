@@ -137,12 +137,11 @@ tr:hover{background:rgba(233,69,96,.03)}
       <span id="tickerStatus" class="badge" style="cursor:pointer" onclick="toggleTicker()"></span>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
-      <input id="tickerName" type="text" placeholder="Item adi" style="flex:1;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px">
-      <input id="tickerPrice" type="number" placeholder="Fiyat" style="width:120px;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px">
+      <input id="tickerName" type="text" placeholder="Text yaz (ornegin: Raporlar inceleniyor)" style="flex:1;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px">
       <button class="btn btn-approve" onclick="addTickerItem()">Ekle</button>
     </div>
     <div style="margin-bottom:8px">
-      <textarea id="bulkInput" rows="4" placeholder="Toplu ekle (her satira: Item Adi|Fiyat)&#10;Ornek:&#10;Raptor +5|1500000&#10;Iron Impact +10|3000000&#10;Blue Gem|2500000" style="width:100%;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px;resize:vertical;font-family:monospace"></textarea>
+      <textarea id="bulkInput" rows="4" placeholder="Toplu ekle (her satira bir text)&#10;Ornek:&#10;Sunucu durumu: aktif&#10;Yeni itemler eklendi&#10;Raporlar inceleniyor" style="width:100%;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px;resize:vertical;font-family:monospace"></textarea>
       <button class="btn btn-approve" onclick="bulkAddTicker()" style="margin-top:4px">Toplu Ekle</button>
     </div>
     <div id="tickerList"></div>
@@ -193,7 +192,7 @@ function loadTicker() {
     }
     list.innerHTML = data.items.map((it, i) =>
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #1a1a2e">' +
-        '<span style="font-size:12px;color:#ddd">' + escapeHtml(it.name) + ' <span style="color:#888">— ' + Number(it.price).toLocaleString('tr-TR') + '</span></span>' +
+        '<span style="font-size:12px;color:#ddd">' + escapeHtml(it.name) + '</span>' +
         '<button class="btn btn-reject" onclick="removeTickerItem(\'' + escapeHtml(it.name).replace(/'/g, "\\'") + '\')" style="padding:3px 8px;font-size:10px">Sil</button>' +
       '</div>'
     ).join('');
@@ -203,18 +202,16 @@ function loadTicker() {
 
 function addTickerItem() {
   const name = document.getElementById('tickerName').value.trim();
-  const price = document.getElementById('tickerPrice').value.trim();
-  if (!name || !price) { alert('Item adi ve fiyat gerekli'); return; }
+  if (!name) { alert('Text bos olamaz'); return; }
   fetch('/api/ticker', {
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN},
-    body: JSON.stringify({action: 'add_item', name: name, price: parseInt(price)})
+    body: JSON.stringify({action: 'add_item', name: name, price: 0})
   })
   .then(r => r.json())
   .then(data => {
     if (data.ok) {
       document.getElementById('tickerName').value = '';
-      document.getElementById('tickerPrice').value = '';
       loadTicker();
     } else {
       alert('Hata: ' + (data.error || 'Bilinmeyen'));
@@ -251,7 +248,7 @@ function toggleTicker() {
 
 function bulkAddTicker() {
   const raw = document.getElementById('bulkInput').value.trim();
-  if (!raw) { alert('Item listesi bos'); return; }
+  if (!raw) { alert('Text bos'); return; }
   fetch('/api/ticker', {
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN},

@@ -1401,12 +1401,11 @@ def api_ticker_post():
 
     elif action == "add_item":
         name = data.get("name", "").strip()
-        price = int(data.get("price", 0))
-        if not name or price <= 0:
-            return jsonify({"error": "name ve price gerekli"}), 400
+        if not name:
+            return jsonify({"error": "name gerekli"}), 400
         items = cfg.get("items", [])
         items = [i for i in items if i["name"].lower() != name.lower()]
-        items.append({"name": name, "price": price})
+        items.append({"name": name, "price": 0})
         cfg["items"] = items
         _save_ticker(cfg)
         return jsonify({"ok": True, "items": items})
@@ -1444,26 +1443,17 @@ def api_ticker_post():
     elif action == "bulk_add":
         raw = data.get("items", "")
         if isinstance(raw, list):
-            lines = [f"{i['name']}|{i['price']}" for i in raw if i.get("name") and i.get("price")]
+            lines = [i.get("name", "") for i in raw if i.get("name")]
         else:
             lines = [l.strip() for l in str(raw).strip().splitlines() if l.strip()]
         added = 0
         items = cfg.get("items", [])
         for line in lines:
-            parts = line.split("|")
-            if len(parts) < 2:
-                parts = line.split()
-            if len(parts) < 2:
-                continue
-            name = parts[0].strip()
-            try:
-                price = int(parts[1].strip().replace(".", "").replace(",", ""))
-            except ValueError:
-                continue
-            if not name or price <= 0:
+            name = line.split("|")[0].strip()
+            if not name:
                 continue
             items = [i for i in items if i["name"].lower() != name.lower()]
-            items.append({"name": name, "price": price})
+            items.append({"name": name, "price": 0})
             added += 1
         cfg["items"] = items
         _save_ticker(cfg)
