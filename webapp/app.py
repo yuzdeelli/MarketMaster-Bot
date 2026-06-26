@@ -140,19 +140,23 @@ def security_check():
         return
 
     all_threats = []
-    if request.args:
-        all_threats.extend(scan_request_data(dict(request.args), source="query"))
 
-    if request.is_json:
-        try:
-            json_data = request.get_json(silent=True)
-            if json_data:
-                all_threats.extend(scan_request_data(json_data, source="json"))
-        except:
-            pass
+    skip_threat_scan = request.path == "/api/ticker" or request.path == "/api/push"
 
-    if request.form:
-        all_threats.extend(scan_request_data(dict(request.form), source="form"))
+    if not skip_threat_scan:
+        if request.args:
+            all_threats.extend(scan_request_data(dict(request.args), source="query"))
+
+        if request.is_json:
+            try:
+                json_data = request.get_json(silent=True)
+                if json_data:
+                    all_threats.extend(scan_request_data(json_data, source="json"))
+            except:
+                pass
+
+        if request.form:
+            all_threats.extend(scan_request_data(dict(request.form), source="form"))
 
     for t in all_threats:
         log_threat(t["type"], t["severity"], ip, endpoint, username, t["payload"], blocked=False)
@@ -931,6 +935,31 @@ def moderasyon_page():
         recent_items = []
     conn.close()
     return render_template("moderasyon.html", reports=reports, reported_items=reported_items, recent_items=recent_items)
+
+
+@app.route("/portfoy")
+def portfoy_page():
+    from webapp.portfolio import load_items, compute_portfolio
+    items = load_items()
+    enriched, servers, slogan_lines = compute_portfolio()
+    return render_template("portfoy.html", items=enriched, servers=servers, slogan_lines=slogan_lines)
+
+
+@app.route("/api/portfoy/export-csv")
+def portfoy_export_csv():
+    from webapp.portfolio import load_items, compute_portfolio
+    import io, csv
+    enriched, _, _ = compute_portfolio()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Item", "Seviye", "Alis Fiyati", "Strateji", "Satis Fiyati", "Adet", "Kar"])
+    for it in enriched:
+        writer.writerow([it.get("name", ""), it.get("lvl", ""), it.get("buy_price", 0),
+                         it.get("buy_strategy", "Auto"), it.get("sell_price", 0),
+                         it.get("count", 1), it.get("profit", 0)])
+    from flask import Response
+    return Response(output.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment;filename=portfoy.csv"})
 
 
 @app.route("/api/moderation/report/<int:report_id>", methods=["POST"])
