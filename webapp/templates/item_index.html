@@ -54,6 +54,11 @@ const input = document.getElementById('searchInput');
 const resultsEl = document.getElementById('results');
 const countEl = document.getElementById('count');
 
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function render(query) {
   const q = query.trim().toLowerCase();
   if (!q) { resultsEl.innerHTML = ''; countEl.textContent = ''; return; }
@@ -62,7 +67,7 @@ function render(query) {
   if (!matches.length) { resultsEl.innerHTML = '<div class="no-result">Sonuc bulunamadi</div>'; return; }
   resultsEl.innerHTML = matches.map(n =>
     '<a class="result-item" href="/item/' + encodeURIComponent(n) + '">' +
-    '<span class="name">' + n + '</span><span class="arrow">&#9654;</span></a>'
+    '<span class="name">' + escapeHtml(n) + '</span><span class="arrow">&#9654;</span></a>'
   ).join('');
 }
 

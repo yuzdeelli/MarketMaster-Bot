@@ -26,9 +26,10 @@ for row in dups:
         (name, srv, price, ptype)
     ).fetchall()
     keep_id = ids[0][0]
-    del_ids = [str(i[0]) for i in ids[1:]]
+    del_ids = [i[0] for i in ids[1:]]
     if del_ids:
-        db.execute(f"DELETE FROM prices WHERE id IN ({','.join(del_ids)})")
+        placeholders = ",".join("?" * len(del_ids))
+        db.execute(f"DELETE FROM prices WHERE id IN ({placeholders})", del_ids)
 
 after = db.execute("SELECT COUNT(*) FROM prices").fetchone()[0]
 print(f"Sonra: {after} kayit (silinen: {before - r1 - after + r1})")

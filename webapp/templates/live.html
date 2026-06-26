@@ -102,6 +102,11 @@ let countdownTimer = null;
 let lastItems = {};
 let countdown = 5;
 
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 async function fetchLive() {
   try {
     const server = document.getElementById('serverFilter').value;
@@ -148,16 +153,16 @@ function renderFeed(data) {
     html += `
       <div class="item-card ${cls}">
         <div class="item-left">
-          <div class="item-name">${item.item_name} <span style="color:#888;font-weight:400">${item.item_lvl}</span></div>
+          <div class="item-name">${escapeHtml(item.item_name)} <span style="color:#888;font-weight:400">${escapeHtml(item.item_lvl)}</span></div>
           <div class="item-meta">
-            <span class="server">${item.server}</span>
-            <span class="type ${item.type}">${item.type.toUpperCase()}</span>
-            <span>${time}</span>
+            <span class="server">${escapeHtml(item.server)}</span>
+            <span class="type ${escapeHtml(item.type)}">${escapeHtml(item.type.toUpperCase())}</span>
+            <span>${escapeHtml(time)}</span>
           </div>
         </div>
         <div class="item-right">
           <div class="item-price">${Number(item.price).toLocaleString('tr-TR')}</div>
-          <div class="item-change ${changeCls}">${changeText}</div>
+          <div class="item-change ${changeCls}">${escapeHtml(changeText)}</div>
         </div>
       </div>
     `;

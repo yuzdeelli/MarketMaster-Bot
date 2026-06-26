@@ -303,6 +303,7 @@ body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;background:#0a0a0a;co
 const COLORS=['#e94560','#2962FF','#089981','#f59e0b','#a855f7','#ef4444','#06b6d4','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#10b981','#e11d48','#0ea5e9','#d946ef','#84cc16','#f43f5e','#6d28d9','#059669'];
 function getItemColor(n){var h=0;for(var i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return COLORS[Math.abs(h)%COLORS.length]}
 function getItemInitial(n){return n.split(' ').map(function(w){return w[0]}).join('').substring(0,2).toUpperCase()}
+function escapeHtml(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 
 // ===== SEARCH =====
 (function(){
@@ -388,8 +389,8 @@ function buildCards(items, skipSparklines){
       <div class="card-top">
         <div class="card-logo" style="background:${color}">${initials}</div>
         <div class="card-info">
-          <div class="card-name" title="${it.name.replace(/"/g,'&quot;')}">${it.name.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-          <div class="card-lvl">${it.lvl||'+0'}</div>
+          <div class="card-name" title="${escapeHtml(it.name)}">${escapeHtml(it.name)}</div>
+          <div class="card-lvl">${escapeHtml(it.lvl||'+0')}</div>
         </div>
         <div class="card-rank">${idx+1}</div>
       </div>
