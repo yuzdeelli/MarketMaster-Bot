@@ -1598,7 +1598,8 @@ def api_analiz(item_name):
         if srv_data["levels"]:
             per_server_level[srv] = srv_data
 
-    stats_all = get_item_stats(matched, server=server if server else None)
+    stats_level = level if level else (levels[0] if levels else "")
+    stats_all = get_item_stats(matched, stats_level, server=server if server else None)
 
     return jsonify({
         "item_name": matched,
@@ -1651,7 +1652,8 @@ def item_analysis_page(item_name):
         return (0, l)
     levels.sort(key=sort_lvl)
 
-    stats_all = get_item_stats(matched)
+    stats_level = levels[0] if levels else ""
+    stats_all = get_item_stats(matched, stats_level)
 
     per_server_level = {}
     for srv in all_servers:

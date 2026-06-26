@@ -308,9 +308,9 @@ class SettingsTab:
             try:
                 user = "marketmaster"
                 size_mb = os.path.getsize(db_path) / (1024 * 1024)
-                url = f"https://www.pythonanywhere.com/api/v0/user/{user}/files/path/app_data.db"
+                url = f"https://www.pythonanywhere.com/api/v0/user/{user}/files/path/home/{user}/app_data.db"
                 with open(db_path, "rb") as f:
-                    resp = requests.put(url, headers={"Authorization": f"Token {token}"}, data=f, timeout=120)
+                    resp = requests.post(url, headers={"Authorization": f"Token {token}"}, files={"content": f}, timeout=120)
                 if resp.status_code == 200:
                     reload_url = f"https://www.pythonanywhere.com/api/v0/user/{user}/webapps/{user}.pythonanywhere.com/reload/"
                     requests.post(reload_url, headers={"Authorization": f"Token {token}"}, timeout=30)
