@@ -101,13 +101,20 @@ tr:hover{background:rgba(233,69,96,.03)}
   <!-- ITEM SEARCH RESULT -->
   <div class="item-result" id="itemResult">
     <h3 id="itemResultTitle">Item Sonucu</h3>
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+      <label style="font-size:11px;color:#666">Level Sec:</label>
+      <select id="levelSelect" style="background:#1a1a2e;border:1px solid #2a2a3e;color:#d1d4dc;padding:4px 8px;border-radius:4px;font-size:12px" onchange="onLevelChange()">
+        <option value="">+ Tum Sonuclar</option>
+      </select>
+      <span id="levelStatus" style="font-size:10px;color:#888"></span>
+    </div>
     <div class="grid-2">
       <div class="chart-box">
-        <h3>Sunucular Arasi Fiyat Karsilastirmasi</h3>
+        <h3 id="chartTitle">Sunucular Arasi Fiyat Karsilastirmasi</h3>
         <canvas id="itemCompareChart" height="250"></canvas>
       </div>
       <div class="table-box">
-        <h3>Sunucu Detaylari <span style="font-size:10px;color:#666;font-weight:normal">(item'a tikla)</span></h3>
+        <h3 id="tableTitle">Sunucu Detaylari <span style="font-size:10px;color:#666;font-weight:normal">(item'a tikla)</span></h3>
         <table><thead><tr><th>Sunucu</th><th>Item</th><th>Lvl</th><th>Satis Medyan</th><th>Alis Medyan</th><th>Makas%</th><th>Ilan</th></tr></thead>
         <tbody id="itemServersBody"></tbody></table>
       </div>
@@ -235,9 +242,11 @@ document.getElementById('itemSearch').addEventListener('keydown',e=>{
 function getParams(){
   const srv=document.getElementById('serverFilter').value;
   const item=document.getElementById('itemSearch').value.trim();
+  const level=document.getElementById('levelSelect').value;
   let p=[];
   if(srv)p.push('server='+encodeURIComponent(srv));
   if(item)p.push('item='+encodeURIComponent(item));
+  if(level)p.push('level='+encodeURIComponent(level));
   return p.length?'?'+p.join('&'):'';
 }
 function applyFilters(){
@@ -254,6 +263,7 @@ function applyFilters(){
 function clearFilters(){
   document.getElementById('serverFilter').value='';
   document.getElementById('itemSearch').value='';
+  document.getElementById('levelSelect').innerHTML='<option value="">+ Tum Sonuclar</option>';
   applyFilters();
 }
 function updateStatus(f){
@@ -273,7 +283,7 @@ function renderAll(d){
   renderGainersLosers(d.changes);
   renderServerTables(d.server_top, d.filters);
   renderLiquidTable(d.top_items);
-  renderItemResult(d.item_servers,d.filters);
+  renderItemResult(d.item_servers,d.item_all_levels,d.filters);
 }
 
 function renderSummary(d){
@@ -496,7 +506,10 @@ function searchItem(name){
   window.open('/analiz/'+encodeURIComponent(name),'_blank');
 }
 
-function renderItemResult(itemServers,filters){
+let _itemAllLevels=[];
+let _itemFilteredLevels=[];
+
+function renderItemResult(itemServers,allLevels,filters){
   const section=document.getElementById('itemResult');
   if(!filters||!filters.item||!itemServers||!itemServers.length){
     section.style.display='none';return;
@@ -504,8 +517,32 @@ function renderItemResult(itemServers,filters){
   section.style.display='';
   document.getElementById('itemResultTitle').textContent='"'+filters.item+'" - Sunucu Karsilastirmasi';
 
+  _itemAllLevels=allLevels||itemServers;
+  _itemFilteredLevels=itemServers;
+
+  // Populate level dropdown
+  const sel=document.getElementById('levelSelect');
+  const currentVal=sel.value;
+  const levels=[...new Set(_itemAllLevels.map(it=>it.lvl||'+'))].sort((a,b)=>{
+    const na=parseInt(a.replace('+',''))||0;
+    const nb=parseInt(b.replace('+',''))||0;
+    return na-nb;
+  });
+  sel.innerHTML='<option value="">+ Tum Sonuclar ('+levels.length+' level)</option>';
+  levels.forEach(lv=>{
+    const o=document.createElement('option');o.value=lv;o.textContent=lv;
+    if(filters.level&&filters.level===lv)o.selected=true;
+    sel.appendChild(o);
+  });
+
+  const hasFilter=filters.level&&filters.level.length>0;
+  const displayData=hasFilter?itemServers:_itemAllLevels;
+  document.getElementById('levelStatus').textContent=hasFilter?('Secili: '+filters.level):('Toplam: '+displayData.length+' sonuc');
+
+  // Table: show all levels
   const tbody=document.getElementById('itemServersBody');
-  tbody.innerHTML=itemServers.map((it,idx)=>{
+  document.getElementById('tableTitle').innerHTML='Sunucu Detaylari <span style="font-size:10px;color:#666;font-weight:normal">('+displayData.length+' sonuc, +tum sonuclar)</span>';
+  tbody.innerHTML=displayData.map((it,idx)=>{
     const sell=it.med_sell||0;
     const buy=it.med_buy||0;
     const makas=sell&&buy?(((sell-buy)/buy)*100).toFixed(1):'-';
@@ -520,15 +557,37 @@ function renderItemResult(itemServers,filters){
     </tr>`;
   }).join('');
 
-  // Chart
+  // Chart: only selected level
+  renderCompareChart(hasFilter?itemServers:_itemAllLevels, hasFilter);
+}
+
+function onLevelChange(){
+  const level=document.getElementById('levelSelect').value;
+  if(level){
+    document.getElementById('levelSelect').value=level;
+  }
+  applyFilters();
+}
+
+function renderCompareChart(data, isFiltered){
+  const ctx=document.getElementById('itemCompareChart');
+  if(itemCompareChart)itemCompareChart.destroy();
+  if(!data||!data.length)return;
+
+  if(isFiltered){
+    document.getElementById('chartTitle').textContent='Sunucular Arasi Fiyat ('+data[0].lvl+')';
+  }else{
+    document.getElementById('chartTitle').textContent='Sunucular Arasi Fiyat Karsilastirmasi';
+  }
+
+  const servers=[...new Set(data.map(it=>it.server))];
   const itemGroups={};
-  itemServers.forEach(it=>{
-    const key=it.item+' '+it.lvl;
+  data.forEach(it=>{
+    const key=it.lvl||'+';
     if(!itemGroups[key])itemGroups[key]={};
     itemGroups[key][it.server]=it.med_sell;
   });
   const chartLabels=Object.keys(itemGroups);
-  const servers=[...new Set(itemServers.map(it=>it.server))];
   const datasets=servers.map((srv,i)=>({
     label:srv,
     data:chartLabels.map(g=>itemGroups[g][srv]||0),
@@ -536,8 +595,6 @@ function renderItemResult(itemServers,filters){
     borderColor:COLORS[i%COLORS.length],
     borderWidth:1
   }));
-  const ctx=document.getElementById('itemCompareChart');
-  if(itemCompareChart)itemCompareChart.destroy();
   itemCompareChart=new Chart(ctx,{
     type:'bar',
     data:{labels:chartLabels,datasets},

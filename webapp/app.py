@@ -1279,6 +1279,7 @@ def api_endeks_data():
     prev_cutoff = (now - timedelta(hours=HOURS * 2)).strftime("%Y-%m-%d %H:%M:%S")
     filter_server = request.args.get("server", "").strip()
     filter_item = request.args.get("item", "").strip()
+    filter_level = request.args.get("level", "").strip()
 
     def med(vals):
         if not vals:
@@ -1450,6 +1451,7 @@ def api_endeks_data():
 
         # 5) Item search result
         item_servers = []
+        item_all_levels = []
         if filter_item:
             for (s, name, lvl), v in srv_item_prices.items():
                 if name != filter_item:
@@ -1457,12 +1459,16 @@ def api_endeks_data():
                 sell_stats = calc_stats(v["sell"])
                 buy_stats = calc_stats(v["buy"])
                 cnt = sell_stats["count"] + buy_stats["count"]
-                item_servers.append({
+                entry = {
                     "server": s, "item": name, "lvl": lvl, "count": cnt,
                     "med_sell": int(med(v["sell"])), "med_buy": int(med(v["buy"])),
                     "sell": sell_stats, "buy": buy_stats,
-                })
+                }
+                item_all_levels.append(entry)
+                if not filter_level or lvl == filter_level:
+                    item_servers.append(entry)
             item_servers.sort(key=lambda x: x["count"], reverse=True)
+            item_all_levels.sort(key=lambda x: x["count"], reverse=True)
 
         # 6) Price changes (24h)
         change_where = "WHERE timestamp >= ?"
@@ -1498,7 +1504,8 @@ def api_endeks_data():
         "servers": servers, "server_top": server_top,
         "top_items": top_items, "top_by_server": top_by_server,
         "changes": processed, "item_servers": item_servers,
-        "filters": {"server": filter_server, "item": filter_item},
+        "item_all_levels": item_all_levels,
+        "filters": {"server": filter_server, "item": filter_item, "level": filter_level},
         "server_groups": server_groups,
     })
 
