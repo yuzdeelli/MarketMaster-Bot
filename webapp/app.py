@@ -84,7 +84,7 @@ def security_check():
     request._start_time = time.time()
     ip = _get_client_ip()
 
-    if not check_ip_whitelist(ip):
+    if not check_ip_whitelist(ip) and request.path not in ("/api/ticker",):
         log_audit_event("IP_BLOCKED", ip_address=ip)
         return jsonify({"error": "IP engellendi"}), 403
 
@@ -184,7 +184,7 @@ def security_check():
                 if not verify_api_token(token):
                     return jsonify({"error": "Unauthorized"}), 401
 
-    if request.method == "POST" and request.path not in ("/login", "/api/push", "/api/search"):
+    if request.method == "POST" and request.path not in ("/login", "/api/push", "/api/search", "/api/ticker"):
         if not validate_csrf_token():
             return jsonify({"error": "CSRF token gecersiz"}), 403
 

@@ -20,22 +20,24 @@ import json
 import requests
 
 BASE_URL = os.environ.get("TICKER_API_URL", "http://127.0.0.1:8765")
-API_TOKEN = os.environ.get("PYTHONANYWHERE_TOKEN", "")
+API_TOKEN = os.environ.get("TICKER_API_TOKEN", "")
 
-_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analyzer_config.json")
-if not API_TOKEN and os.path.exists(_config_path):
-    try:
-        with open(_config_path) as f:
-            cfg = json.load(f)
-        token_raw = cfg.get("pythonanywhere_token", "")
-        if token_raw and cfg.get("pythonanywhere_token_encrypted"):
-            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-            from core.config import CryptoManager
-            API_TOKEN = CryptoManager.decrypt(token_raw)
-        elif token_raw:
-            API_TOKEN = token_raw
-    except Exception:
-        pass
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+if not API_TOKEN:
+    _sec_path = os.path.join(_script_dir, "security.json")
+    if os.path.exists(_sec_path):
+        try:
+            with open(_sec_path) as f:
+                sec = json.load(f)
+            token_raw = sec.get("api_token", "")
+            if token_raw and sec.get("api_token_encrypted"):
+                sys.path.insert(0, _script_dir)
+                from core.config import CryptoManager
+                API_TOKEN = CryptoManager.decrypt(token_raw)
+            elif token_raw:
+                API_TOKEN = token_raw
+        except Exception:
+            pass
 
 HEADERS = {"X-API-Token": API_TOKEN, "Content-Type": "application/json"}
 
