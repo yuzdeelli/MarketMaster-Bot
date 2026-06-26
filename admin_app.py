@@ -29,6 +29,18 @@ try:
 except:
     pass
 
+API_TOKEN = ""
+try:
+    _sec_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "security.json")
+    if os.path.exists(_sec_path):
+        with open(_sec_path) as _f:
+            _sec = json.load(_f)
+        _tok = _sec.get("api_token", "")
+        if _tok:
+            API_TOKEN = _tok
+except:
+    pass
+
 def _get_local_ip():
     try:
         candidates = []
@@ -730,11 +742,14 @@ class AdminPanel(QMainWindow):
     def api_call(self, endpoint, method="GET", data=None):
         url = WEB_URL + endpoint
         try:
+            headers = {"Content-Type": "application/json"}
+            if API_TOKEN:
+                headers["X-API-Token"] = API_TOKEN
             if data:
                 body = json.dumps(data).encode("utf-8")
-                req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method=method)
+                req = urllib.request.Request(url, data=body, headers=headers, method=method)
             else:
-                req = urllib.request.Request(url, method=method)
+                req = urllib.request.Request(url, headers={"X-API-Token": API_TOKEN} if API_TOKEN else {}, method=method)
             with urllib.request.urlopen(req, timeout=10) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except Exception as e:

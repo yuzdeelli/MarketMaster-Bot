@@ -185,8 +185,10 @@ def security_check():
                     return jsonify({"error": "Unauthorized"}), 401
 
     if request.method == "POST" and request.path not in ("/login", "/api/push", "/api/search", "/api/ticker"):
-        if not validate_csrf_token():
-            return jsonify({"error": "CSRF token gecersiz"}), 403
+        token = request.headers.get("X-API-Token", "")
+        if not (token and verify_api_token(token)):
+            if not validate_csrf_token():
+                return jsonify({"error": "CSRF token gecersiz"}), 403
 
 
 @app.after_request
@@ -953,10 +955,19 @@ def admin_audit():
     return render_template("admin_audit.html", logs=logs, event_type=event_type)
 
 
+def _admin_auth():
+    if session.get("logged_in") and is_admin_user(session.get("username", "")):
+        return True
+    token = request.headers.get("X-API-Token", "")
+    if token and verify_api_token(token):
+        return True
+    return False
+
+
 # ---- ADMIN API: API LOGS ---- #
 @app.route("/api/admin/api-logs")
 def admin_api_logs():
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     limit = request.args.get("limit", 200, type=int)
     method = request.args.get("method", "")
@@ -968,14 +979,14 @@ def admin_api_logs():
 
 @app.route("/api/admin/api-logs/stats")
 def admin_api_log_stats():
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     return jsonify(get_api_log_stats())
 
 
 @app.route("/api/admin/api-logs/clear", methods=["POST"])
 def admin_api_logs_clear():
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     clear_api_logs()
     return jsonify({"ok": True})
@@ -984,7 +995,7 @@ def admin_api_logs_clear():
 # ---- ADMIN API: USER PERMISSIONS ---- #
 @app.route("/api/admin/users")
 def admin_api_users():
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     users = list_users()
     return jsonify({"users": users})
@@ -992,7 +1003,7 @@ def admin_api_users():
 
 @app.route("/api/admin/users/<int:user_id>/admin", methods=["POST"])
 def admin_api_toggle_admin(user_id):
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     from webapp.security import get_auth_db
     conn = get_auth_db()
@@ -1013,7 +1024,7 @@ def admin_api_toggle_admin(user_id):
 
 @app.route("/api/admin/users/<int:user_id>/active", methods=["POST"])
 def admin_api_toggle_active(user_id):
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     from webapp.security import get_auth_db
     conn = get_auth_db()
@@ -1034,7 +1045,7 @@ def admin_api_toggle_active(user_id):
 
 @app.route("/api/admin/users/<int:user_id>/delete", methods=["POST"])
 def admin_api_delete_user(user_id):
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     from webapp.security import get_auth_db
     conn = get_auth_db()
@@ -1055,7 +1066,7 @@ def admin_api_delete_user(user_id):
 # ---- ADMIN API: THREAT DETECTION ---- #
 @app.route("/api/admin/threats")
 def admin_threats():
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     limit = request.args.get("limit", 200, type=int)
     threat_type = request.args.get("type", "")
@@ -1067,14 +1078,14 @@ def admin_threats():
 
 @app.route("/api/admin/threats/stats")
 def admin_threat_stats():
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     return jsonify(get_threat_stats())
 
 
 @app.route("/api/admin/threats/clear", methods=["POST"])
 def admin_threats_clear():
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     clear_threats()
     return jsonify({"ok": True})
@@ -1082,7 +1093,7 @@ def admin_threats_clear():
 
 @app.route("/api/admin/settings", methods=["GET"])
 def admin_settings_get():
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     sec = load_security()
     return jsonify({
@@ -1096,7 +1107,7 @@ def admin_settings_get():
 
 @app.route("/api/admin/settings", methods=["POST"])
 def admin_settings_post():
-    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+    if not _admin_auth():
         return jsonify({"error": "Yetkiniz yok"}), 403
     data = request.get_json(silent=True) or {}
     sec = load_security()
