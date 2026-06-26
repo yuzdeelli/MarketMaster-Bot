@@ -152,6 +152,17 @@ class ConfigManager:
         return config.get(key, "")
 
     @staticmethod
+    def save_sync_token(token):
+        config = ConfigManager._load_config()
+        config["pythonanywhere_token"] = token
+        ConfigManager._save_config(config)
+
+    @staticmethod
+    def load_sync_token():
+        config = ConfigManager._load_config()
+        return config.get("pythonanywhere_token", "")
+
+    @staticmethod
     def _load_config():
         if os.path.exists(CONFIG_FILE):
             try:

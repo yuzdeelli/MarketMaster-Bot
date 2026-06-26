@@ -1,8 +1,12 @@
 import webbrowser
 import socket
+import os
+import time
+import threading
+import requests
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                                 QLabel, QLineEdit, QGroupBox, QMessageBox,
-                                QScrollArea, QFrame)
+                                QScrollArea, QFrame, QSpinBox)
 from PySide6.QtCore import Qt, QTimer
 from core.config import ConfigManager
 from web_server import WebServer
@@ -23,6 +27,8 @@ class SettingsTab:
 
         self._setup_api_key_section(scroll_layout)
         self._setup_web_server_section(scroll_layout)
+        self._setup_cloud_sync_section(scroll_layout)
+        self._setup_cloud_sync_section(scroll_layout)
 
         scroll_layout.addStretch()
 
@@ -231,6 +237,100 @@ class SettingsTab:
 
         section.setLayout(s_layout)
         layout.addWidget(section)
+
+    def _setup_cloud_sync_section(self, layout):
+        section = QGroupBox("PythonAnywhere DB Senkron")
+        section.setStyleSheet("QGroupBox { color: #e94560; }")
+        s_layout = QVBoxLayout()
+
+        lbl = QLabel("Veritabanini PythonAnywhere'e otomatik yukleyin.\nToken: https://www.pythonanywhere.com/user/marketmaster/account/")
+        lbl.setStyleSheet("color: #888;")
+        s_layout.addWidget(lbl)
+
+        token_frame = QHBoxLayout()
+        token_frame.addWidget(QLabel("API Token:"))
+        self.sync_token_entry = QLineEdit()
+        self.sync_token_entry.setPlaceholderText("Token girin...")
+        self.sync_token_entry.setEchoMode(QLineEdit.EchoMode.Password)
+        self.sync_token_entry.setFixedWidth(350)
+        token_frame.addWidget(self.sync_token_entry)
+        saved_token = ConfigManager.load_sync_token()
+        if saved_token:
+            self.sync_token_entry.setText(saved_token)
+        token_frame.addStretch()
+        s_layout.addLayout(token_frame)
+
+        btn_frame = QHBoxLayout()
+        btn_save = QPushButton("Kaydet")
+        btn_save.setFixedWidth(100)
+        btn_save.setStyleSheet("background-color: #2ecc71; color: white;")
+        btn_save.clicked.connect(self._save_sync_token)
+        btn_frame.addWidget(btn_save)
+
+        self.btn_sync_now = QPushButton("Hemen Senkron Et")
+        self.btn_sync_now.setFixedWidth(140)
+        self.btn_sync_now.setStyleSheet("background-color: #3498db; color: white;")
+        self.btn_sync_now.clicked.connect(self._sync_now)
+        btn_frame.addWidget(self.btn_sync_now)
+        btn_frame.addStretch()
+        s_layout.addLayout(btn_frame)
+
+        self.lbl_sync_status = QLabel("Durum: Beklemede")
+        self.lbl_sync_status.setStyleSheet("color: #888;")
+        s_layout.addWidget(self.lbl_sync_status)
+
+        section.setLayout(s_layout)
+        layout.addWidget(section)
+
+    def _save_sync_token(self):
+        token = self.sync_token_entry.text().strip()
+        if not token:
+            QMessageBox.warning(self.master, "Hata", "Token bos olamaz!")
+            return
+        ConfigManager.save_sync_token(token)
+        QMessageBox.information(self.master, "Basarili", "Token kaydedildi!")
+
+    def _sync_now(self):
+        token = self.sync_token_entry.text().strip() or ConfigManager.load_sync_token()
+        if not token:
+            QMessageBox.warning(self.master, "Hata", "Once token girin!")
+            return
+        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "app_data.db")
+        if not os.path.exists(db_path):
+            QMessageBox.critical(self.master, "Hata", f"DB bulunamadi:\n{db_path}")
+            return
+        self.btn_sync_now.setEnabled(False)
+        self.btn_sync_now.setText("Senkron ediliyor...")
+        self.lbl_sync_status.setText("Durum: Yukleniyor...")
+        self.lbl_sync_status.setStyleSheet("color: #f39c12;")
+
+        def do_sync():
+            try:
+                user = "marketmaster"
+                size_mb = os.path.getsize(db_path) / (1024 * 1024)
+                url = f"https://www.pythonanywhere.com/api/v0/user/{user}/files/path/app_data.db"
+                with open(db_path, "rb") as f:
+                    resp = requests.put(url, headers={"Authorization": f"Token {token}"}, data=f, timeout=120)
+                if resp.status_code == 200:
+                    reload_url = f"https://www.pythonanywhere.com/api/v0/user/{user}/webapps/{user}.pythonanywhere.com/reload/"
+                    requests.post(reload_url, headers={"Authorization": f"Token {token}"}, timeout=30)
+                    QTimer.singleShot(0, lambda: self._sync_done(True, f"{size_mb:.1f} MB yuklendi, web yeniden baslatildi"))
+                else:
+                    QTimer.singleShot(0, lambda: self._sync_done(False, f"Hata ({resp.status_code}): {resp.text[:100]}"))
+            except Exception as e:
+                QTimer.singleShot(0, lambda: self._sync_done(False, str(e)))
+
+        threading.Thread(target=do_sync, daemon=True).start()
+
+    def _sync_done(self, success, msg):
+        self.btn_sync_now.setEnabled(True)
+        self.btn_sync_now.setText("Hemen Senkron Et")
+        if success:
+            self.lbl_sync_status.setText(f"Durum: {msg}")
+            self.lbl_sync_status.setStyleSheet("color: #2ecc71;")
+        else:
+            self.lbl_sync_status.setText(f"Durum: {msg}")
+            self.lbl_sync_status.setStyleSheet("color: #e74c3c;")
 
     def toggle_web_server(self):
         if self.web_server.is_running:

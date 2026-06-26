@@ -37,9 +37,10 @@ except Exception:
 _rate_data = {}
 _burst_data = {}
 RATE_WINDOW = 6
-BURST_THRESHOLD = 2
-BURST_BLOCK_AFTER = 600
+BURST_THRESHOLD = 3
+BURST_BLOCK_AFTER = 900
 LOCAL_PROXIES = {"127.0.0.1", "::1", "192.168.1.102"}
+IS_PYTHONANYWHERE = "PYTHONANYWHERE_DOMAIN" in os.environ
 
 
 def _get_client_ip():
@@ -94,33 +95,38 @@ def security_check():
         return
 
     now = time.time()
-    if ip not in _rate_data:
-        _rate_data[ip] = {"count": 1, "first": now}
-    else:
-        d = _rate_data[ip]
-        if now - d["first"] > RATE_WINDOW:
-            d["count"] = 1
-            d["first"] = now
-        else:
-            d["count"] += 1
 
-    if ip not in _burst_data:
-        _burst_data[ip] = {"last": now, "fast_since": now}
-    else:
-        b = _burst_data[ip]
-        gap = now - b["last"]
-        b["last"] = now
-        if gap < BURST_THRESHOLD:
-            if now - b["fast_since"] >= BURST_BLOCK_AFTER:
-                log_audit_event("BURST_BLOCK", ip_address=ip)
-                return jsonify({"error": "10 dk boyunca surekli hizli istek - engellendi"}), 429
-        else:
-            b["fast_since"] = now
+    is_local = ip.startswith("127.") or ip.startswith("10.") or ip.startswith("172.") or ip.startswith("192.168.") or ip == "::1"
 
-    if len(_burst_data) > 500:
-        stale = [k for k, v in _burst_data.items() if now - v["last"] > 600]
-        for k in stale:
-            del _burst_data[k]
+    if not is_local and not IS_PYTHONANYWHERE:
+        now = time.time()
+        if ip not in _rate_data:
+            _rate_data[ip] = {"count": 1, "first": now}
+        else:
+            d = _rate_data[ip]
+            if now - d["first"] > RATE_WINDOW:
+                d["count"] = 1
+                d["first"] = now
+            else:
+                d["count"] += 1
+
+        if ip not in _burst_data:
+            _burst_data[ip] = {"last": now, "fast_since": now}
+        else:
+            b = _burst_data[ip]
+            gap = now - b["last"]
+            b["last"] = now
+            if gap < BURST_THRESHOLD:
+                if now - b["fast_since"] >= BURST_BLOCK_AFTER:
+                    log_audit_event("BURST_BLOCK", ip_address=ip)
+                    return jsonify({"error": "10 dk boyunca surekli hizli istek - engellendi"}), 429
+            else:
+                b["fast_since"] = now
+
+        if len(_burst_data) > 500:
+            stale = [k for k, v in _burst_data.items() if now - v["last"] > 600]
+            for k in stale:
+                del _burst_data[k]
 
     # === THREAT DETECTION ===
     username = session.get("username") if session.get("logged_in") else None
