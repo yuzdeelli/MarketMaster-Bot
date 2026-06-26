@@ -11,7 +11,7 @@ from collections import defaultdict
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from webapp.database import init_db, get_all_items, get_item_stats, get_item_stats_for_server, get_all_items_for_server, get_price_history, get_ohlc_data, get_db_stats, get_unique_servers, insert_prices_batch, get_all_item_names, cleanup_stale_listings
 from webapp.analytics import get_full_analytics
-from webapp.security import load_security, authenticate_user, register_user, check_ip_whitelist, verify_api_token, check_login_attempts, record_login_attempt, clear_login_attempts, check_session_timeout, change_password, log_audit_event, get_audit_logs, list_users, toggle_user_active, delete_user, is_admin_user, log_api_request, get_api_logs, clear_api_logs, get_api_log_stats, scan_request_data, scan_user_agent, log_threat, get_threats, get_threat_stats, clear_threats
+from webapp.security import load_security, authenticate_user, register_user, check_ip_whitelist, verify_api_token, check_login_attempts, record_login_attempt, clear_login_attempts, check_session_timeout, change_password, log_audit_event, get_audit_logs, list_users, toggle_user_active, delete_user, is_admin_user, log_api_request, get_api_logs, clear_api_logs, get_api_log_stats, scan_request_data, scan_user_agent, log_threat, get_threats, get_threat_stats, clear_threats, get_auth_db
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -912,17 +912,79 @@ def item_detail(item):
 
 @app.route("/moderasyon")
 def moderasyon_page():
-    from webapp.security import get_auth_db
     if not session.get("logged_in"):
         return redirect(url_for("login_page"))
     if not is_admin_user(session.get("username", "")):
         return jsonify({"error": "Yetkiniz yok"}), 403
     conn = get_auth_db()
-    reports = conn.execute("SELECT * FROM reports WHERE status='pending' ORDER BY created_at DESC").fetchall() if conn else []
-    reported_items = conn.execute("SELECT * FROM items WHERE reported_count >= 1 ORDER BY reported_count DESC").fetchall() if conn else []
-    recent_items = conn.execute("SELECT * FROM items ORDER BY id DESC LIMIT 20").fetchall() if conn else []
+    try:
+        reports = conn.execute("SELECT * FROM reports WHERE status='pending' ORDER BY created_at DESC").fetchall()
+    except Exception:
+        reports = []
+    try:
+        reported_items = conn.execute("SELECT * FROM items WHERE reported_count >= 1 ORDER BY reported_count DESC").fetchall()
+    except Exception:
+        reported_items = []
+    try:
+        recent_items = conn.execute("SELECT * FROM items ORDER BY id DESC LIMIT 20").fetchall()
+    except Exception:
+        recent_items = []
     conn.close()
     return render_template("moderasyon.html", reports=reports, reported_items=reported_items, recent_items=recent_items)
+
+
+@app.route("/api/moderation/report/<int:report_id>", methods=["POST"])
+def moderation_report(report_id):
+    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+        return jsonify({"error": "Yetkiniz yok"}), 403
+    data = request.get_json(silent=True) or {}
+    action = data.get("action", "")
+    conn = get_auth_db()
+    try:
+        if action == "approve":
+            conn.execute("UPDATE reports SET status='approved' WHERE id=?", (report_id,))
+        elif action == "reject":
+            conn.execute("UPDATE reports SET status='rejected' WHERE id=?", (report_id,))
+        conn.commit()
+    except Exception:
+        pass
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/moderation/delete", methods=["POST"])
+def moderation_delete():
+    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+        return jsonify({"error": "Yetkiniz yok"}), 403
+    data = request.get_json(silent=True) or {}
+    name = data.get("name", "")
+    if not name:
+        return jsonify({"error": "Item adi gerekli"}), 400
+    conn = get_auth_db()
+    try:
+        conn.execute("DELETE FROM items WHERE name=?", (name,))
+        conn.commit()
+    except Exception:
+        pass
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/moderation/cleanup", methods=["POST"])
+def moderation_cleanup():
+    if not session.get("logged_in") or not is_admin_user(session.get("username", "")):
+        return jsonify({"error": "Yetkiniz yok"}), 403
+    conn = get_auth_db()
+    deleted = 0
+    try:
+        items = conn.execute("SELECT name FROM items WHERE reported_count >= 3").fetchall()
+        deleted = len(items)
+        conn.execute("DELETE FROM items WHERE reported_count >= 3")
+        conn.commit()
+    except Exception:
+        pass
+    conn.close()
+    return jsonify({"ok": True, "deleted": deleted})
 
 
 @app.route("/admin/users")
@@ -1319,7 +1381,8 @@ def api_ticker_get():
 @app.route("/api/ticker", methods=["POST"])
 def api_ticker_post():
     token = request.headers.get("X-API-Token", "")
-    if not verify_api_token(token):
+    session_ok = session.get("logged_in") and is_admin_user(session.get("username", ""))
+    if not verify_api_token(token) and not session_ok:
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json(silent=True) or {}
@@ -1377,6 +1440,34 @@ def api_ticker_post():
         cfg["hide_buy_for"] = [h for h in hide if h.lower() != name.lower()]
         _save_ticker(cfg)
         return jsonify({"ok": True, "hide_buy_for": cfg["hide_buy_for"]})
+
+    elif action == "bulk_add":
+        raw = data.get("items", "")
+        if isinstance(raw, list):
+            lines = [f"{i['name']}|{i['price']}" for i in raw if i.get("name") and i.get("price")]
+        else:
+            lines = [l.strip() for l in str(raw).strip().splitlines() if l.strip()]
+        added = 0
+        items = cfg.get("items", [])
+        for line in lines:
+            parts = line.split("|")
+            if len(parts) < 2:
+                parts = line.split()
+            if len(parts) < 2:
+                continue
+            name = parts[0].strip()
+            try:
+                price = int(parts[1].strip().replace(".", "").replace(",", ""))
+            except ValueError:
+                continue
+            if not name or price <= 0:
+                continue
+            items = [i for i in items if i["name"].lower() != name.lower()]
+            items.append({"name": name, "price": price})
+            added += 1
+        cfg["items"] = items
+        _save_ticker(cfg)
+        return jsonify({"ok": True, "added": added, "items": items})
 
     return jsonify({"error": f"Bilinmeyen action: {action}"}), 400
 

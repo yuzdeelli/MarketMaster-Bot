@@ -136,10 +136,14 @@ tr:hover{background:rgba(233,69,96,.03)}
       Kayan Yazi (Ticker) Yonetimi
       <span id="tickerStatus" class="badge" style="cursor:pointer" onclick="toggleTicker()"></span>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <input id="tickerName" type="text" placeholder="Item adi (ornegin: Raptor +5)" style="flex:1;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px">
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="tickerName" type="text" placeholder="Item adi" style="flex:1;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px">
       <input id="tickerPrice" type="number" placeholder="Fiyat" style="width:120px;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px">
       <button class="btn btn-approve" onclick="addTickerItem()">Ekle</button>
+    </div>
+    <div style="margin-bottom:8px">
+      <textarea id="bulkInput" rows="4" placeholder="Toplu ekle (her satira: Item Adi|Fiyat)&#10;Ornek:&#10;Raptor +5|1500000&#10;Iron Impact +10|3000000&#10;Blue Gem|2500000" style="width:100%;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px;resize:vertical;font-family:monospace"></textarea>
+      <button class="btn btn-approve" onclick="bulkAddTicker()" style="margin-top:4px">Toplu Ekle</button>
     </div>
     <div id="tickerList"></div>
   </div>
@@ -242,6 +246,27 @@ function toggleTicker() {
   })
   .then(r => r.json())
   .then(() => loadTicker())
+  .catch(err => alert('Hata: ' + err.message));
+}
+
+function bulkAddTicker() {
+  const raw = document.getElementById('bulkInput').value.trim();
+  if (!raw) { alert('Item listesi bos'); return; }
+  fetch('/api/ticker', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN},
+    body: JSON.stringify({action: 'bulk_add', items: raw})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      document.getElementById('bulkInput').value = '';
+      alert(data.added + ' item eklendi');
+      loadTicker();
+    } else {
+      alert('Hata: ' + (data.error || 'Bilinmeyen'));
+    }
+  })
   .catch(err => alert('Hata: ' + err.message));
 }
 
