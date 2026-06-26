@@ -910,6 +910,21 @@ def item_detail(item):
     return render_template("item.html", item=matched, item_name=matched, lvl=lvl, stats=stats, analytics=analytics, prices=prices, all_levels=all_levels, current_server=server, all_items=all_items)
 
 
+@app.route("/moderasyon")
+def moderasyon_page():
+    from webapp.security import get_auth_db
+    if not session.get("logged_in"):
+        return redirect(url_for("login_page"))
+    if not is_admin_user(session.get("username", "")):
+        return jsonify({"error": "Yetkiniz yok"}), 403
+    conn = get_auth_db()
+    reports = conn.execute("SELECT * FROM reports WHERE status='pending' ORDER BY created_at DESC").fetchall() if conn else []
+    reported_items = conn.execute("SELECT * FROM items WHERE reported_count >= 1 ORDER BY reported_count DESC").fetchall() if conn else []
+    recent_items = conn.execute("SELECT * FROM items ORDER BY id DESC LIMIT 20").fetchall() if conn else []
+    conn.close()
+    return render_template("moderasyon.html", reports=reports, reported_items=reported_items, recent_items=recent_items)
+
+
 @app.route("/admin/users")
 def admin_users():
     if not session.get("logged_in"):
