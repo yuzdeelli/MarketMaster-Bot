@@ -21,11 +21,15 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data.db"
 BACKUP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analyzer_config.json")
 WEB_URL = "http://127.0.0.1:8765"
+WEB_URL = "https://marketmaster.pythonanywhere.com"
 try:
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, "r") as _f:
             _cfg2 = json.load(_f)
-        WEB_URL = f"http://127.0.0.1:{_cfg2.get('web_port', 8765)}"
+        if _cfg2.get("use_pythonanywhere"):
+            WEB_URL = "https://marketmaster.pythonanywhere.com"
+        else:
+            WEB_URL = f"http://127.0.0.1:{_cfg2.get('web_port', 8765)}"
 except:
     pass
 
