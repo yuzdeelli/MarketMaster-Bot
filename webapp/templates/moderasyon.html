@@ -130,6 +130,20 @@ tr:hover{background:rgba(233,69,96,.03)}
     {% endif %}
   </div>
 
+  <!-- Ticker Yonetimi -->
+  <div class="section">
+    <div class="section-title">
+      Kayan Yazi (Ticker) Yonetimi
+      <span id="tickerStatus" class="badge" style="cursor:pointer" onclick="toggleTicker()"></span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="tickerName" type="text" placeholder="Item adi (ornegin: Raptor +5)" style="flex:1;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px">
+      <input id="tickerPrice" type="number" placeholder="Fiyat" style="width:120px;padding:8px;border:1px solid #333;border-radius:4px;background:#16213e;color:#ddd;font-size:12px">
+      <button class="btn btn-approve" onclick="addTickerItem()">Ekle</button>
+    </div>
+    <div id="tickerList"></div>
+  </div>
+
   <!-- Son Eklenen Itemlar -->
   <div class="section">
     <div class="section-title">Son Eklenen Itemlar</div>
@@ -160,6 +174,85 @@ tr:hover{background:rgba(233,69,96,.03)}
 <script>
 const CSRF_TOKEN = '{{ csrf_token() }}';
 
+// ===== TICKER =====
+function loadTicker() {
+  fetch('/api/ticker')
+  .then(r => r.json())
+  .then(data => {
+    const status = document.getElementById('tickerStatus');
+    status.textContent = data.enabled ? 'ACIK' : 'KAPALI';
+    status.style.background = data.enabled ? '#2ecc71' : '#e74c3c';
+    const list = document.getElementById('tickerList');
+    if (!data.items || !data.items.length) {
+      list.innerHTML = '<div class="empty">Ticker\'da item yok</div>';
+      return;
+    }
+    list.innerHTML = data.items.map((it, i) =>
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #1a1a2e">' +
+        '<span style="font-size:12px;color:#ddd">' + escapeHtml(it.name) + ' <span style="color:#888">— ' + Number(it.price).toLocaleString('tr-TR') + '</span></span>' +
+        '<button class="btn btn-reject" onclick="removeTickerItem(\'' + escapeHtml(it.name).replace(/'/g, "\\'") + '\')" style="padding:3px 8px;font-size:10px">Sil</button>' +
+      '</div>'
+    ).join('');
+  })
+  .catch(() => {});
+}
+
+function addTickerItem() {
+  const name = document.getElementById('tickerName').value.trim();
+  const price = document.getElementById('tickerPrice').value.trim();
+  if (!name || !price) { alert('Item adi ve fiyat gerekli'); return; }
+  fetch('/api/ticker', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN},
+    body: JSON.stringify({action: 'add_item', name: name, price: parseInt(price)})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      document.getElementById('tickerName').value = '';
+      document.getElementById('tickerPrice').value = '';
+      loadTicker();
+    } else {
+      alert('Hata: ' + (data.error || 'Bilinmeyen'));
+    }
+  })
+  .catch(err => alert('Hata: ' + err.message));
+}
+
+function removeTickerItem(name) {
+  if (!confirm('"' + name + '" ticker\'dan silinsin mi?')) return;
+  fetch('/api/ticker', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN},
+    body: JSON.stringify({action: 'remove_item', name: name})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) loadTicker();
+    else alert('Hata: ' + (data.error || 'Bilinmeyen'));
+  })
+  .catch(err => alert('Hata: ' + err.message));
+}
+
+function toggleTicker() {
+  fetch('/api/ticker', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN},
+    body: JSON.stringify({action: 'toggle'})
+  })
+  .then(r => r.json())
+  .then(() => loadTicker())
+  .catch(err => alert('Hata: ' + err.message));
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+loadTicker();
+
+// ===== REPORTS =====
 function handleReport(reportId, action) {
   fetch('/api/moderation/report/' + reportId, {
     method: 'POST',
