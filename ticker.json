@@ -1,0 +1,25 @@
+{
+  "enabled": true,
+  "items": [],
+  "hide_buy_for": [
+    "Superior Draki Supply Box",
+    "Old Draki Supply Box",
+    "Fortified Sterling Silver Gemstone",
+    "Silvery Gem",
+    "Blue Gem",
+    "Green Gem",
+    "Black Gem",
+    "Blue Treasure Chest",
+    "Green Treasure Chest",
+    "Red Treasure Chest",
+    "Magic Hammer",
+    "Talisman Upgrade Item",
+    "Fragment of Arrogance",
+    "Fragment of Gluttony",
+    "Fragment of Rage",
+    "Fragment of Sloth",
+    "Fragment of Lechery",
+    "Fragment of Jealousy",
+    "Fragment of Avarice"
+  ]
+}
