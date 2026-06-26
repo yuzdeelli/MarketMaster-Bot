@@ -19,7 +19,7 @@ import os
 import json
 import requests
 
-BASE_URL = os.environ.get("TICKER_API_URL", "http://127.0.0.1:8765")
+BASE_URL = os.environ.get("TICKER_API_URL", "https://marketmaster.pythonanywhere.com")
 API_TOKEN = os.environ.get("TICKER_API_TOKEN", "")
 
 _script_dir = os.path.dirname(os.path.abspath(__file__))
