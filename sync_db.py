@@ -4,6 +4,7 @@ import sys
 import time
 
 PYTHONANYWHERE_USER = "marketmaster"
+HOME_DIR = f"/home/{PYTHONANYWHERE_USER}"
 PYTHONANYWHERE_TOKEN = ""
 DB_LOCAL = os.path.join(os.path.dirname(__file__), "app_data.db")
 DB_REMOTE_PATH = "app_data.db"
@@ -24,11 +25,11 @@ def upload_db(token):
     size_mb = os.path.getsize(DB_LOCAL) / (1024 * 1024)
     print(f"DB boyutu: {size_mb:.1f} MB")
 
-    url = f"https://www.pythonanywhere.com/api/v0/user/{PYTHONANYWHERE_USER}/files/path/{DB_REMOTE_PATH}"
+    url = f"https://www.pythonanywhere.com/api/v0/user/{PYTHONANYWHERE_USER}/files/path/{HOME_DIR}/{DB_REMOTE_PATH}"
     with open(DB_LOCAL, "rb") as f:
-        resp = requests.put(url, headers={"Authorization": f"Token {token}"}, data=f)
+        resp = requests.post(url, headers={"Authorization": f"Token {token}"}, files={"content": f}, timeout=120)
 
-    if resp.status_code == 200:
+    if resp.status_code in (200, 201):
         print("Yukleme basarili!")
         return True
     elif resp.status_code == 403:
