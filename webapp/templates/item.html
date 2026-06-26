@@ -116,7 +116,7 @@ h1{font-size:24px;color:#131722;margin-bottom:2px}
 .ctrl-btn.active{border-color:#2962FF;color:#2962FF;background:rgba(41,98,255,.1)}
 
 .chart-wrap{position:relative}
-.chart-wrap canvas{width:100%!important;height:260px!important}
+.chart-wrap canvas{width:100%!important;height:420px!important}
 .chart-panel{position:absolute;top:14px;left:14px;z-index:5;display:flex;gap:12px;padding:8px 12px;background:rgba(255,255,255,.94);border-radius:12px;font-size:11px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid #e0e3eb;pointer-events:none;box-shadow:0 10px 24px rgba(15,23,42,.08)}
 .chart-panel .cp-item{color:#787b86;white-space:nowrap}
 .chart-panel .cp-item b{color:#131722;margin-left:5px;font-weight:700}
@@ -193,7 +193,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 .btn-secondary{background:transparent;color:#787b86;border:1px solid #e0e3eb;padding:8px 16px;border-radius:4px;cursor:pointer}
 .btn-secondary:hover{color:#131722;background:#f0f3fa}
 
-.main-dashboard-container{display:grid;width:100%;max-width:1200px;margin:0 auto;grid-template-columns:1.6fr 0.95fr;align-items:flex-start;gap:24px;box-sizing:border-box;padding:20px 20px 32px;background:#f8f9fc}
+.main-dashboard-container{display:grid;width:100%;grid-template-columns:1.6fr 0.95fr;align-items:flex-start;gap:24px;box-sizing:border-box;padding:20px 20px 32px;background:#f8f9fc}
 .chart-section{display:flex;flex-direction:column;min-width:0;gap:18px}
 .analysis-sidebar-right{flex:0 0 auto;display:flex;flex-direction:column;gap:18px;overflow-y:auto;max-height:calc(100vh - 130px);padding-bottom:10px}
 .analysis-sidebar-right .calculator-panel,.analysis-sidebar-right .alarm-panel{background:#ffffff;border:1px solid #e0e3eb;border-radius:16px;padding:18px;box-shadow:0 12px 30px rgba(15,23,42,.06)}
@@ -310,8 +310,8 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 .btn-full-chart:hover{background:#f0f3fa;border-color:#b2b5be}
 
 /* ---- CHART WRAPPER ---- */
-#chart-wrapper{position:relative;width:100%;max-height:260px;height:260px;background-color:#fff;border-radius:12px;border:1px solid #e0e3eb;overflow:hidden}
-#chart-wrapper:fullscreen{max-height:none;height:100vh;border-radius:0;border:none}
+#chart-wrapper{position:relative;width:100vw;margin-left:calc(-50vw + 50%);height:420px;background-color:#fff;border-radius:12px;border:1px solid #e0e3eb;overflow:hidden;box-sizing:border-box}
+#chart-wrapper:fullscreen{height:100vh;border-radius:0;border:none}
 #chart-container{width:100%;height:100%}
 
 /* ---- INDICATOR TABLE CONTAINER ---- */
@@ -373,7 +373,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
         padding-bottom: 4px;
     }
     #chart-wrapper {
-        height: 320px !important;
+        height: 300px !important;
     }
 }
 </style>
@@ -640,14 +640,13 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     </div>
 
     <!-- 4. Ana Grafik Alani -->
-    <div id="chart-wrapper">
-        <div id="priceChart" style="width:100%;height:100%;position:relative">
-            <div id="shimmerOverlay" class="shimmer-wrapper">
-                <div class="shimmer-line header-shimmer"></div>
-                <div class="shimmer-box graph-shimmer"></div>
-                <div class="shimmer-line footer-shimmer"></div>
-            </div>
+    <div id="chart-wrapper" style="position:relative">
+        <div id="shimmerOverlay" class="shimmer-wrapper" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1500">
+            <div class="shimmer-line header-shimmer"></div>
+            <div class="shimmer-box graph-shimmer"></div>
+            <div class="shimmer-line footer-shimmer"></div>
         </div>
+        <div id="priceChart" style="width:100%;height:420px;position:relative"></div>
     </div>
 
 </div>
@@ -792,6 +791,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
   let PRICES = {{ prices|tojson }};
   let currentRange = '1440';
   let liveTimer = null;
+  const TZ_OFFSET_SEC = -new Date().getTimezoneOffset() * 60;
 
   /* ---- TIMESTAMP ---- */
   function parseTS(ts) {
@@ -1307,6 +1307,48 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     });
   }
 
+  function resampleOHLC(ohlc, targetCount) {
+    if (!ohlc || ohlc.length <= targetCount) return ohlc;
+    const groupSize = Math.ceil(ohlc.length / targetCount);
+    const result = [];
+    for (let i = 0; i < ohlc.length; i += groupSize) {
+      const chunk = ohlc.slice(i, i + groupSize);
+      if (chunk.length === 0) continue;
+      const closes = chunk.map(c => c.close);
+      const highs = chunk.map(c => c.high);
+      const lows = chunk.map(c => c.low);
+      result.push({
+        time: chunk[0].time,
+        open: chunk[0].open,
+        high: Math.max(...highs),
+        low: Math.min(...lows),
+        close: chunk[chunk.length - 1].close,
+        volume: chunk.reduce((s, c) => s + (c.volume || 1), 0),
+      });
+    }
+    return result;
+  }
+
+  function smoothClose(ohlc, windowSize) {
+    if (!ohlc || ohlc.length < windowSize) return ohlc;
+    const result = [];
+    for (let i = 0; i < ohlc.length; i++) {
+      const start = Math.max(0, i - Math.floor(windowSize / 2));
+      const end = Math.min(ohlc.length, i + Math.ceil(windowSize / 2));
+      const window = ohlc.slice(start, end);
+      const avgClose = window.reduce((s, c) => s + c.close, 0) / window.length;
+      result.push({
+        time: ohlc[i].time,
+        open: Math.round(avgClose),
+        high: Math.round(avgClose),
+        low: Math.round(avgClose),
+        close: Math.round(avgClose),
+        volume: ohlc[i].volume || 1,
+      });
+    }
+    return result;
+  }
+
   function buildMainChart() {
     const container = document.getElementById('priceChart');
     if (!container) {
@@ -1314,16 +1356,22 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
       return;
     }
 
-    const candleData = prepareChartData(currentOHLC);
-    console.log('[CHART] candleData:', candleData.length, candleData.slice(0,2));
-    if (candleData.length < 2) {
-      console.warn('[CHART] Not enough data points:', candleData.length);
-      container.innerHTML = '';
+    if (!currentOHLC || currentOHLC.length === 0) {
+      console.warn('[CHART] currentOHLC bos, bekleniyor...');
       return;
     }
 
-    const klineData = candleData.map(d => ({
-      timestamp: d.time * 1000,
+    let chartOHLC = prepareChartData(currentOHLC);
+    const isArea = (currentChartType === 'line');
+
+    console.log('[CHART] candleData:', chartOHLC.length, 'type:', currentChartType);
+    if (chartOHLC.length < 2) {
+      console.warn('[CHART] Yeterli veri yok:', chartOHLC.length);
+      return;
+    }
+
+    const klineData = chartOHLC.map(d => ({
+      timestamp: (d.time + TZ_OFFSET_SEC) * 1000,
       open: d.open, high: d.high, low: d.low, close: d.close, volume: d.volume || 1
     }));
     console.log('[CHART] klineData sample:', klineData.slice(0,2));
@@ -1337,12 +1385,10 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
       return;
     }
 
-    container.innerHTML = '';
     container.style.width = '100%';
-    container.style.height = '260px';
+    container.style.height = '420px';
     container.style.position = 'relative';
 
-    const isArea = (currentChartType === 'line');
     console.log('[CHART] chartType:', currentChartType, 'isArea:', isArea);
 
     kChart = klinecharts.init('priceChart', {
@@ -1351,10 +1397,23 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
         candle: {
           type: isArea ? 'area' : 'candle_solid',
           bar: { upColor: '#26a69a', downColor: '#ef5350', noChangeColor: '#888' },
-          area: { lineColor: '#2962FF', lineSize: 2, value: 'close', backgroundColor: [{ offset: 0, color: 'rgba(41,98,255,0.3)' }, { offset: 1, color: 'rgba(41,98,255,0.01)' }] }
+          area: { lineColor: '#2962FF', lineSize: 2, value: 'close',
+            backgroundColor: [
+              { offset: 0, color: 'rgba(41,98,255,0.25)' },
+              { offset: 0.5, color: 'rgba(41,98,255,0.08)' },
+              { offset: 1, color: 'rgba(41,98,255,0.01)' }
+            ]
+          }
         },
         grid: { show: false },
         watermark: { visible: false }
+      },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+        barSpacing: 10,
+        rightOffset: 5,
+        minBarSpacing: 2,
       }
     });
     console.log('[CHART] kChart created:', !!kChart);
@@ -1440,12 +1499,20 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
   }
 
   function switchChartType(type) {
+    const wasLine = currentChartType;
     currentChartType = type;
     if (kChart) {
       try { kChart.dispose(); } catch(e) {}
       kChart = null;
     }
-    buildMainChart();
+    const container = document.getElementById('priceChart');
+    if (container) container.innerHTML = '';
+    if (type === 'line' && wasLine !== 'line') {
+      activeInds.ema = true;
+      const emaBtn = document.querySelector('.ind-btn[data-ind="ema"]');
+      if (emaBtn) emaBtn.classList.add('on');
+    }
+    setTimeout(function() { buildMainChart(); }, 50);
   }
 
   /* ---- OHLC ---- */
@@ -1892,8 +1959,8 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 
   function toKlineData(ohlcData) {
     const seen = new Set();
-    return ohlcData.map(d => ({
-      timestamp: d.time * 1000,
+    let data = ohlcData.map(d => ({
+      timestamp: (d.time + TZ_OFFSET_SEC) * 1000,
       open: Math.round(parseFloat(d.open)),
       high: Math.round(parseFloat(d.high)),
       low: Math.round(parseFloat(d.low)),
@@ -1905,6 +1972,17 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
       seen.add(d.timestamp);
       return true;
     }).sort((a, b) => a.timestamp - b.timestamp);
+
+    if (currentChartType === 'line' && data.length > 60) {
+      const asOHLC = data.map(d => ({ time: d.timestamp / 1000, open: d.open, high: d.high, low: d.low, close: d.close, volume: d.volume }));
+      const resampled = resampleOHLC(asOHLC, 80);
+      const smoothed = smoothClose(resampled, 3);
+      data = smoothed.map(d => ({
+        timestamp: (d.time + TZ_OFFSET_SEC) * 1000,
+        open: Math.round(d.open), high: Math.round(d.high), low: Math.round(d.low), close: Math.round(d.close), volume: d.volume || 1
+      }));
+    }
+    return data;
   }
 
   function fitChart() {

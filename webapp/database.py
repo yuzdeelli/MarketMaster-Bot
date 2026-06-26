@@ -314,11 +314,47 @@ def _parse_timestamp(ts):
 
 
 def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=None):
-    """Her kaydi bir mum olarak dondurur.
-    id zaman ekseni olarak kullanilir (otomatik artan = kronolojik siralama).
-    Her mum: open=high=low=close=price, volume=1
-    interval birlestirme suresi (dakika): 1, 5, 15, 60, 1440 veya 'auto'
+    """Pandas resample+ffill mantigi ile OHLC olusturma.
+    1) Veritabanindan ham kayitlari cek
+    2) IQR ile aykirilari temizle
+    3) Timestamp'leri parse et, epoch'a cevir
+    4) View range ile filtrele (son N dakika)
+    5) Candle size'a gore resample (open=first, high=max, low=min, close=last, volume=sum)
+    6) Ffill: bos mumlari onceki fiyatla doldur
     """
+    from datetime import timedelta
+
+    TIMEFRAME_CONFIG = {
+        "15":  (timedelta(minutes=15),  5 * 60),
+        "30":  (timedelta(minutes=30),  5 * 60),
+        "45":  (timedelta(minutes=45),  5 * 60),
+        "60":  (timedelta(hours=1),     5 * 60),
+        "120": (timedelta(hours=2),     5 * 60),
+        "240": (timedelta(hours=4),     15 * 60),
+        "480": (timedelta(hours=8),     15 * 60),
+        "960": (timedelta(hours=16),    30 * 60),
+        "1440":(timedelta(hours=24),    30 * 60),
+        "10080":(timedelta(days=7),     3600),
+        "20160":(timedelta(days=14),    3600),
+        "40320":(timedelta(days=28),    3600),
+        "80640":(timedelta(days=56),    7200),
+        "161280":(timedelta(days=112),  7200),
+        "302400":(timedelta(days=365),  86400),
+        "43200":(timedelta(days=30),    86400),
+        "129600":(timedelta(days=90),   86400),
+        "259200":(timedelta(days=180),  86400),
+        "518400":(timedelta(days=365),  86400),
+    }
+
+    AUTO_CONFIGS = [
+        (30,    timedelta(minutes=15),  60),
+        (100,   timedelta(hours=1),     5 * 60),
+        (300,   timedelta(hours=4),     15 * 60),
+        (1000,  timedelta(days=1),      30 * 60),
+        (5000,  timedelta(days=7),      3600),
+        (20000, timedelta(days=30),     86400),
+    ]
+
     with get_db() as db:
         query = "SELECT id, item_name, item_lvl, price, type, seller, timestamp FROM prices WHERE item_name=? AND item_lvl=?"
         params = [item, lvl]
@@ -367,97 +403,102 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
         if not all_records:
             return []
 
+        for r in all_records:
+            r["epoch"] = _parse_timestamp(r["timestamp"])
+
+        all_records.sort(key=lambda r: r["epoch"] or 0)
+
+        ts_samples = [r["timestamp"] for r in all_records[:20] if r["timestamp"]]
+        has_real_time = any(
+            ":" in str(ts) and "12:00:00" not in str(ts) for ts in ts_samples
+        )
+
+        if not has_real_time:
+            min_id = all_records[0]["id"]
+            max_id = all_records[-1]["id"]
+            id_range = max(1, max_id - min_id)
+            now_epoch = int(datetime.utcnow().timestamp())
+
+            if interval == "auto":
+                view_sec = int(timedelta(days=30).total_seconds())
+            elif TIMEFRAME_CONFIG.get(interval):
+                view_sec = int(TIMEFRAME_CONFIG[interval][0].total_seconds())
+            else:
+                view_sec = 86400
+
+            end_epoch = now_epoch
+            start_epoch = end_epoch - view_sec
+
+            for r in all_records:
+                id_ratio = (r["id"] - min_id) / id_range
+                r["epoch"] = start_epoch + int(id_ratio * view_sec)
+        else:
+            timed = [r for r in all_records if r["epoch"]]
+            untimed = [r for r in all_records if not r["epoch"]]
+
+            if timed and untimed:
+                min_id_t = min(r["id"] for r in timed)
+                max_id_t = max(r["id"] for r in timed)
+                min_epoch_t = min(r["epoch"] for r in timed)
+                max_epoch_t = max(r["epoch"] for r in timed)
+                id_range = max(1, max_id_t - min_id_t)
+                epoch_range = max(1, max_epoch_t - min_epoch_t)
+                for r in untimed:
+                    id_ratio = (r["id"] - min_id_t) / id_range
+                    r["epoch"] = min_epoch_t + int(id_ratio * epoch_range)
+
+        all_records.sort(key=lambda r: r["epoch"] or 0)
+
+        max_epoch = all_records[-1]["epoch"]
+        if not max_epoch:
+            return []
+
         if interval == "auto":
             n = len(all_records)
-            if n <= 60:
-                group = 1
-            elif n <= 200:
-                group = 2
-            elif n <= 500:
-                group = 5
-            else:
-                group = max(1, n // 100)
-        else:
-            interval_map = {
-                "1": 1, "5": 5, "15": 15, "30": 30, "45": 45,
-                "60": 60, "120": 120, "240": 240, "480": 480, "960": 960,
-                "1440": 1440, "10080": 10080, "20160": 20160, "40320": 40320,
-                "80640": 80640, "161280": 161280, "302400": 302400,
-                "43200": 43200, "129600": 129600, "259200": 259200, "518400": 518400,
-                "W": 10080, "M": 43200,
-            }
-            group = max(1, interval_map.get(interval, 1))
-
-        use_time_grouping = interval != "auto" and group > 1
-
-        if use_time_grouping:
-            bucket_seconds = group * 60
-            buckets = {}
-
-            has_real_time = False
-            ts_samples = [r["timestamp"] for r in all_records[:20] if r["timestamp"]]
-            for ts in ts_samples:
-                if ":" in str(ts) and "12:00:00" not in str(ts):
-                    has_real_time = True
+            view_sec = None
+            candle_sec = None
+            for threshold, v, c in AUTO_CONFIGS:
+                if n <= threshold:
+                    view_sec = int(v.total_seconds())
+                    candle_sec = c
                     break
-
-            if has_real_time:
-                for r in all_records:
-                    epoch = _parse_timestamp(r["timestamp"])
-                    if not epoch:
-                        continue
-                    bucket_key = (epoch // bucket_seconds) * bucket_seconds
-                    if bucket_key not in buckets:
-                        buckets[bucket_key] = []
-                    buckets[bucket_key].append(r)
-            else:
-                min_id = all_records[0]["id"]
-                max_id = all_records[-1]["id"]
-                id_range = max(1, max_id - min_id)
-                now_epoch = int(datetime.utcnow().timestamp())
-                day_start = now_epoch - (now_epoch % 86400)
-                for r in all_records:
-                    id_ratio = (r["id"] - min_id) / id_range
-                    spread_seconds = int(id_ratio * 86400 * min(3, len(set(rr["timestamp"] for rr in all_records))))
-                    epoch = day_start + spread_seconds
-                    bucket_key = (epoch // bucket_seconds) * bucket_seconds
-                    if bucket_key not in buckets:
-                        buckets[bucket_key] = []
-                    buckets[bucket_key].append(r)
-
-            chart_data = []
-            for bucket_key in sorted(buckets.keys()):
-                chunk = buckets[bucket_key]
-                prices = [c["price"] for c in chunk]
-                ids = [c["id"] for c in chunk]
-                chart_data.append({
-                    "time": bucket_key,
-                    "open": prices[0],
-                    "high": max(prices),
-                    "low": min(prices),
-                    "close": prices[-1],
-                    "volume": len(prices),
-                    "item_name": chunk[0]["item_name"],
-                    "item_lvl": chunk[0]["item_lvl"],
-                    "timestamp": chunk[0]["timestamp"],
-                    "seller": chunk[0]["seller"],
-                    "first_id": ids[0],
-                    "last_id": ids[-1],
-                })
+            if view_sec is None:
+                view_sec = int(timedelta(days=365).total_seconds())
+                candle_sec = 86400
         else:
-            chart_data = []
-            for idx, i in enumerate(range(0, len(all_records), group)):
-                chunk = all_records[i:i + group]
+            cfg = TIMEFRAME_CONFIG.get(interval)
+            if cfg:
+                view_sec = int(cfg[0].total_seconds())
+                candle_sec = cfg[1]
+            else:
+                view_sec = 86400
+                candle_sec = 30 * 60
+
+        start_epoch = max_epoch - view_sec
+
+        chart_data = []
+        last_close = None
+        last_record = None
+        bucket_t = (start_epoch // candle_sec) * candle_sec
+        end_bucket = (max_epoch // candle_sec) * candle_sec
+
+        buckets = {}
+        for r in all_records:
+            epoch = r["epoch"]
+            if not epoch or epoch < start_epoch:
+                continue
+            bkey = (epoch // candle_sec) * candle_sec
+            if bkey not in buckets:
+                buckets[bkey] = []
+            buckets[bkey].append(r)
+
+        while bucket_t <= end_bucket:
+            if bucket_t in buckets:
+                chunk = buckets[bucket_t]
                 prices = [c["price"] for c in chunk]
                 ids = [c["id"] for c in chunk]
-                ts_raw = chunk[0]["timestamp"]
-                epoch = _parse_timestamp(ts_raw)
-                mid_id = (ids[0] + ids[-1]) / 2
-                id_ratio = (mid_id - all_records[0]["id"]) / max(1, all_records[-1]["id"] - all_records[0]["id"])
-                if not epoch or ":" not in (ts_raw or ""):
-                    epoch = int(id_ratio * 86400) + 1782166400
-                chart_data.append({
-                    "time": epoch,
+                bar = {
+                    "time": bucket_t,
                     "open": prices[0],
                     "high": max(prices),
                     "low": min(prices),
@@ -469,19 +510,30 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
                     "seller": chunk[0]["seller"],
                     "first_id": ids[0],
                     "last_id": ids[-1],
-                })
+                }
+                last_close = prices[-1]
+                last_record = bar
+            elif last_close is not None:
+                bar = {
+                    "time": bucket_t,
+                    "open": last_close,
+                    "high": last_close,
+                    "low": last_close,
+                    "close": last_close,
+                    "volume": 0,
+                    "item_name": last_record["item_name"] if last_record else "",
+                    "item_lvl": last_record["item_lvl"] if last_record else "",
+                    "timestamp": "",
+                    "seller": "",
+                    "first_id": last_record["first_id"] if last_record else 0,
+                    "last_id": last_record["last_id"] if last_record else 0,
+                }
+            else:
+                bucket_t += candle_sec
+                continue
 
-        chart_data.sort(key=lambda x: x["time"])
-        seen = set()
-        deduped = []
-        for c in chart_data:
-            t = c["time"]
-            while t in seen:
-                t += 1
-            c["time"] = t
-            seen.add(t)
-            deduped.append(c)
-        chart_data = deduped
+            chart_data.append(bar)
+            bucket_t += candle_sec
 
         return chart_data[-limit:]
 
