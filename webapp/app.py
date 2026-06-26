@@ -184,7 +184,7 @@ def security_check():
                 if not verify_api_token(token):
                     return jsonify({"error": "Unauthorized"}), 401
 
-    if request.method == "POST" and request.path not in ("/login", "/api/push", "/api/search") and not request.path.startswith("/api/admin/"):
+    if request.method == "POST" and request.path not in ("/login", "/api/push", "/api/search"):
         if not validate_csrf_token():
             return jsonify({"error": "CSRF token gecersiz"}), 403
 
@@ -198,7 +198,7 @@ def security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' https://unpkg.com https://cdn.jsdelivr.net"
     if request.is_secure:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
@@ -226,7 +226,7 @@ def log_api(response):
 @app.route("/login", methods=["GET", "POST"])
 def login_page():
     if request.method == "POST":
-        ip = request.remote_addr or "127.0.0.1"
+        ip = _get_client_ip()
         if not check_login_attempts(ip):
             return render_template("login.html", error="Cok fazla deneme. 15 dakika bekleyin.")
 

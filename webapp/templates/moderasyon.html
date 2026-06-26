@@ -158,10 +158,12 @@ tr:hover{background:rgba(233,69,96,.03)}
 </div>
 
 <script>
+const CSRF_TOKEN = '{{ csrf_token() }}';
+
 function handleReport(reportId, action) {
   fetch('/api/moderation/report/' + reportId, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN},
     body: JSON.stringify({action: action})
   })
   .then(r => r.json())
@@ -182,7 +184,7 @@ function deleteItem(name) {
   
   fetch('/api/moderation/delete', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN},
     body: JSON.stringify({name: name})
   })
   .then(r => r.json())
@@ -201,7 +203,7 @@ function cleanupItems() {
     return;
   }
   
-  fetch('/api/moderation/cleanup', {method: 'POST'})
+  fetch('/api/moderation/cleanup', {method: 'POST', headers: {'X-CSRF-Token': CSRF_TOKEN}})
   .then(r => r.json())
   .then(data => {
     if (data.ok) {

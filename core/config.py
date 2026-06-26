@@ -4,6 +4,7 @@ import sys
 import base64
 import hashlib
 import bcrypt
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 if getattr(sys, 'frozen', False):
     _BASE_DIR = os.path.dirname(sys.executable)
@@ -14,7 +15,7 @@ _SECRET_FILE = os.path.join(_BASE_DIR, ".secret_key")
 
 
 class CryptoManager:
-    """Config degerlerini sifreleme/cozme (XOR + base64)"""
+    """Config degerlerini AES-256-GCM ile sifreleme/cozme"""
     _key = None
 
     @classmethod
@@ -23,7 +24,11 @@ class CryptoManager:
             return cls._key
         if os.path.exists(_SECRET_FILE):
             with open(_SECRET_FILE, "rb") as f:
-                cls._key = f.read()
+                raw = f.read()
+            if len(raw) == 32:
+                cls._key = raw
+            else:
+                cls._key = hashlib.sha256(raw).digest()
         else:
             cls._key = os.urandom(32)
             with open(_SECRET_FILE, "wb") as f:
@@ -35,9 +40,10 @@ class CryptoManager:
         if not plaintext:
             return ""
         key = cls._get_key()
-        data = plaintext.encode("utf-8")
-        encrypted = bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
-        return base64.b64encode(encrypted).decode("ascii")
+        nonce = os.urandom(12)
+        aesgcm = AESGCM(key)
+        ct = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), None)
+        return base64.b64encode(nonce + ct).decode("ascii")
 
     @classmethod
     def decrypt(cls, ciphertext):
@@ -45,10 +51,12 @@ class CryptoManager:
             return ""
         try:
             key = cls._get_key()
-            data = base64.b64decode(ciphertext)
-            decrypted = bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
-            return decrypted.decode("utf-8")
-        except:
+            raw = base64.b64decode(ciphertext)
+            nonce = raw[:12]
+            ct = raw[12:]
+            aesgcm = AESGCM(key)
+            return aesgcm.decrypt(nonce, ct, None).decode("utf-8")
+        except Exception:
             return ciphertext
 
 
@@ -154,12 +162,15 @@ class ConfigManager:
     @staticmethod
     def save_sync_token(token):
         config = ConfigManager._load_config()
-        config["pythonanywhere_token"] = token
+        config["pythonanywhere_token"] = CryptoManager.encrypt(token)
+        config["pythonanywhere_token_encrypted"] = True
         ConfigManager._save_config(config)
 
     @staticmethod
     def load_sync_token():
         config = ConfigManager._load_config()
+        if config.get("pythonanywhere_token_encrypted"):
+            return CryptoManager.decrypt(config.get("pythonanywhere_token", ""))
         return config.get("pythonanywhere_token", "")
 
     @staticmethod

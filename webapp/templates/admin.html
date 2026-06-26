@@ -386,6 +386,15 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 
 <script>
 const API = '';
+const CSRF_TOKEN = '{{ csrf_token() }}';
+
+function csrfHeaders(method) {
+  const h = {'Content-Type':'application/json'};
+  if (method === 'POST' || method === 'PUT' || method === 'DELETE') {
+    h['X-CSRF-Token'] = CSRF_TOKEN;
+  }
+  return h;
+}
 
 // NAVIGATION
 function showSection(name) {
@@ -470,7 +479,7 @@ function toggleAllItems() {
 async function deleteItem(id) {
   openModal('deleteModal');
   document.getElementById('deleteModalConfirm').onclick = async () => {
-    await fetch(API + '/api/admin/items/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})});
+    await fetch(API + '/api/admin/items/delete', {method:'POST', headers:csrfHeaders('POST'), body:JSON.stringify({id})});
     closeModal('deleteModal'); toast('Item silindi'); loadItems();
   };
 }
@@ -480,7 +489,7 @@ async function bulkDeleteItems() {
   openModal('deleteModal');
   document.getElementById('deleteModalText').textContent = `${ids.length} kaydi silmek istediginize emin misiniz?`;
   document.getElementById('deleteModalConfirm').onclick = async () => {
-    await fetch(API + '/api/admin/items/bulk-delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ids})});
+    await fetch(API + '/api/admin/items/bulk-delete', {method:'POST', headers:csrfHeaders('POST'), body:JSON.stringify({ids})});
     closeModal('deleteModal'); toast(`${ids.length} kayit silindi`); loadItems();
   };
 }
@@ -517,11 +526,11 @@ async function addManualPrice() {
     seller: document.getElementById('addPriceSeller').value
   };
   if (!data.item_name || !data.price) return toast('Item ve fiyat gerekli', true);
-  await fetch(API + '/api/admin/prices/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  await fetch(API + '/api/admin/prices/add', {method:'POST', headers:csrfHeaders('POST'), body:JSON.stringify(data)});
   toast('Fiyat eklendi'); loadPrices();
 }
 async function deletePrice(id) {
-  await fetch(API + '/api/admin/prices/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})});
+  await fetch(API + '/api/admin/prices/delete', {method:'POST', headers:csrfHeaders('POST'), body:JSON.stringify({id})});
   toast('Fiyat silindi'); loadPrices();
 }
 async function bulkDeletePrices() {
@@ -532,7 +541,7 @@ async function bulkDeletePrices() {
     server: document.getElementById('bulkDelServer').value
   };
   if (!data.item_name) return toast('Item adi gerekli', true);
-  const r = await fetch(API + '/api/admin/prices/bulk-delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  const r = await fetch(API + '/api/admin/prices/bulk-delete', {method:'POST', headers:csrfHeaders('POST'), body:JSON.stringify(data)});
   const d = await r.json();
   toast(`${d.deleted || 0} kayit silindi`); loadPrices();
 }
@@ -561,7 +570,7 @@ async function deleteSeller(seller) {
   openModal('deleteModal');
   document.getElementById('deleteModalText').textContent = `"${seller}" tum kayitlarini silmek istediginize emin misiniz?`;
   document.getElementById('deleteModalConfirm').onclick = async () => {
-    await fetch(API + '/api/admin/sellers/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({seller})});
+    await fetch(API + '/api/admin/sellers/delete', {method:'POST', headers:csrfHeaders('POST'), body:JSON.stringify({seller})});
     closeModal('deleteModal'); toast('Satisci kayitlari silindi'); loadSellers();
   };
 }
@@ -580,30 +589,30 @@ async function refreshScanStatus() {
   } catch(e) {}
 }
 async function startScan() {
-  await fetch(API + '/api/admin/scan/start', {method:'POST'});
+  await fetch(API + '/api/admin/scan/start', {method:'POST', headers:csrfHeaders('POST')});
   toast('Tarama baslatildi'); refreshScanStatus();
 }
 async function stopScan() {
-  await fetch(API + '/api/admin/scan/stop', {method:'POST'});
+  await fetch(API + '/api/admin/scan/stop', {method:'POST', headers:csrfHeaders('POST')});
   toast('Tarama durduruldu'); refreshScanStatus();
 }
 
 // CLEANUP
 async function cleanupDuplicates() {
-  const r = await fetch(API + '/api/admin/cleanup/duplicates', {method:'POST'});
+  const r = await fetch(API + '/api/admin/cleanup/duplicates', {method:'POST', headers:csrfHeaders('POST')});
   const d = await r.json();
   toast(`${d.deleted || 0} tekrarlanan kayit silindi`);
 }
 async function cleanupOldRecords() {
   const days = document.getElementById('cleanupDays').value;
-  const r = await fetch(API + '/api/admin/cleanup/old', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days})});
+  const r = await fetch(API + '/api/admin/cleanup/old', {method:'POST', headers:csrfHeaders('POST'), body:JSON.stringify({days})});
   const d = await r.json();
   toast(`${d.deleted || 0} eski kayit silindi`);
 }
 
 // BACKUP
 async function createBackup() {
-  const r = await fetch(API + '/api/admin/backup', {method:'POST'});
+  const r = await fetch(API + '/api/admin/backup', {method:'POST', headers:csrfHeaders('POST')});
   const d = await r.json();
   toast(d.message || 'Yedek olusturuldu'); loadBackups();
 }
@@ -645,7 +654,7 @@ async function saveSettings() {
     api_key: document.getElementById('settingApiKey').value,
     auto_scan_minutes: parseInt(document.getElementById('settingAutoScan').value) || 60
   };
-  await fetch(API + '/api/admin/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  await fetch(API + '/api/admin/settings', {method:'POST', headers:csrfHeaders('POST'), body:JSON.stringify(data)});
   toast('Ayarlar kaydedildi');
 }
 async function saveSecurity() {
@@ -658,7 +667,7 @@ async function saveSecurity() {
     max_login_attempts: parseInt(document.getElementById('settingMaxAttempts').value) || 5,
     lockout_minutes: parseInt(document.getElementById('settingLockout').value) || 15
   };
-  const r = await fetch(API + '/api/admin/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  const r = await fetch(API + '/api/admin/settings', {method:'POST', headers:csrfHeaders('POST'), body:JSON.stringify(data)});
   if (r.ok) toast('Guvenlik ayarlari kaydedildi');
   else toast('Hata olustu', true);
 }

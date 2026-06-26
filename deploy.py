@@ -28,6 +28,13 @@ FILES_TO_UPLOAD = [
 def get_token():
     token = os.environ.get("PYTHONANYWHERE_TOKEN", "")
     if not token:
+        try:
+            sys.path.insert(0, LOCAL_ROOT)
+            from core.config import ConfigManager
+            token = ConfigManager.load_sync_token()
+        except Exception:
+            pass
+    if not token:
         config_path = os.path.join(LOCAL_ROOT, "analyzer_config.json")
         if os.path.exists(config_path):
             with open(config_path) as f:
