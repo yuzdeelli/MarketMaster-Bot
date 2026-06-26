@@ -22,7 +22,6 @@ FILES_TO_UPLOAD = [
     "webapp/templates/item.html",
     "webapp/templates/item_index.html",
     "webapp/templates/live.html",
-    "webapp/templates/admin.html",
 ]
 
 def get_token():
