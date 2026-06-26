@@ -50,6 +50,9 @@ tr:hover{background:rgba(233,69,96,.03)}
 .status-rejected{color:#e74c3c}
 
 .empty{text-align:center;padding:20px;color:#555;font-size:12px}
+.btn-copy{background:#2962FF;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:10px;cursor:pointer;font-weight:600}
+.btn-copy:hover{background:#1e4bd8}
+.btn-copy.copied{background:#2ecc71}
 </style>
 </head>
 <body>
@@ -145,6 +148,10 @@ tr:hover{background:rgba(233,69,96,.03)}
       <button class="btn btn-approve" onclick="bulkAddTicker()" style="margin-top:4px">Toplu Ekle</button>
     </div>
     <div id="tickerList"></div>
+    <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+      <button class="btn-copy" onclick="copyAllTicker()">Tumu Kopyala</button>
+      <span id="copyMsg" style="color:#2ecc71;font-size:11px;display:none">Kopyalandi!</span>
+    </div>
   </div>
 
   <!-- Son Eklenen Itemlar -->
@@ -192,7 +199,8 @@ function loadTicker() {
     }
     list.innerHTML = data.items.map((it, i) =>
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #1a1a2e">' +
-        '<span style="font-size:12px;color:#ddd">' + escapeHtml(it.name) + '</span>' +
+        '<span style="font-size:12px;color:#ddd;flex:1">' + escapeHtml(it.name) + '</span>' +
+        '<button class="btn-copy" onclick="copyOne(\'' + escapeHtml(it.name).replace(/'/g, "\\'") + '\')" style="margin-right:6px">Kopyala</button>' +
         '<button class="btn btn-reject" onclick="removeTickerItem(\'' + escapeHtml(it.name).replace(/'/g, "\\'") + '\')" style="padding:3px 8px;font-size:10px">Sil</button>' +
       '</div>'
     ).join('');
@@ -270,6 +278,23 @@ function bulkAddTicker() {
 function escapeHtml(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function copyOne(text) {
+  navigator.clipboard.writeText(text).then(() => {});
+}
+
+function copyAllTicker() {
+  fetch('/api/ticker')
+  .then(r => r.json())
+  .then(data => {
+    const text = (data.items || []).map(it => it.name).join(' / ');
+    navigator.clipboard.writeText(text).then(() => {
+      const msg = document.getElementById('copyMsg');
+      msg.style.display = 'inline';
+      setTimeout(() => { msg.style.display = 'none'; }, 2000);
+    });
+  });
 }
 
 loadTicker();
