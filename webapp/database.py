@@ -119,6 +119,7 @@ def insert_price(item, lvl, price, ptype, server="", seller=""):
 
     seller = (seller or '').strip()
     price = int(price)
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     with get_db() as db:
         if seller:
             existing = db.execute(
@@ -127,11 +128,13 @@ def insert_price(item, lvl, price, ptype, server="", seller=""):
             ).fetchone()
             if existing:
                 if price < existing["price"]:
-                    db.execute("UPDATE prices SET price=?, timestamp=CURRENT_TIMESTAMP WHERE id=?", (price, existing["id"]))
+                    db.execute("UPDATE prices SET price=?, timestamp=?, last_seen=? WHERE id=?", (price, now, now, existing["id"]))
+                else:
+                    db.execute("UPDATE prices SET last_seen=? WHERE id=?", (now, existing["id"]))
                 return
         db.execute(
-            "INSERT INTO prices (item_name, item_lvl, price, type, server, seller) VALUES (?,?,?,?,?,?)",
-            (name, level, price, norm_type(ptype), norm_server(server), seller),
+            "INSERT INTO prices (item_name, item_lvl, price, type, server, seller, timestamp, last_seen) VALUES (?,?,?,?,?,?,?,?)",
+            (name, level, price, norm_type(ptype), norm_server(server), seller, now, now),
         )
 
 
@@ -390,14 +393,37 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
         if use_time_grouping:
             bucket_seconds = group * 60
             buckets = {}
-            for r in all_records:
-                epoch = _parse_timestamp(r["timestamp"])
-                if not epoch:
-                    continue
-                bucket_key = (epoch // bucket_seconds) * bucket_seconds
-                if bucket_key not in buckets:
-                    buckets[bucket_key] = []
-                buckets[bucket_key].append(r)
+
+            has_real_time = False
+            ts_samples = [r["timestamp"] for r in all_records[:20] if r["timestamp"]]
+            for ts in ts_samples:
+                if ":" in str(ts) and "12:00:00" not in str(ts):
+                    has_real_time = True
+                    break
+
+            if has_real_time:
+                for r in all_records:
+                    epoch = _parse_timestamp(r["timestamp"])
+                    if not epoch:
+                        continue
+                    bucket_key = (epoch // bucket_seconds) * bucket_seconds
+                    if bucket_key not in buckets:
+                        buckets[bucket_key] = []
+                    buckets[bucket_key].append(r)
+            else:
+                min_id = all_records[0]["id"]
+                max_id = all_records[-1]["id"]
+                id_range = max(1, max_id - min_id)
+                now_epoch = int(datetime.utcnow().timestamp())
+                day_start = now_epoch - (now_epoch % 86400)
+                for r in all_records:
+                    id_ratio = (r["id"] - min_id) / id_range
+                    spread_seconds = int(id_ratio * 86400 * min(3, len(set(rr["timestamp"] for rr in all_records))))
+                    epoch = day_start + spread_seconds
+                    bucket_key = (epoch // bucket_seconds) * bucket_seconds
+                    if bucket_key not in buckets:
+                        buckets[bucket_key] = []
+                    buckets[bucket_key].append(r)
 
             chart_data = []
             for bucket_key in sorted(buckets.keys()):
@@ -597,22 +623,27 @@ def get_all_items_for_server(server, hours=None):
         return [dict(r) for r in rows]
 
 
-def get_prices_for_rsi(item, lvl="", limit=500, type_filter=None):
+def get_prices_for_rsi(item, lvl="", limit=500, type_filter=None, server=None):
     with get_db() as db:
+        sf = ""
+        sparams = []
+        if server:
+            sf = " AND LOWER(TRIM(server)) LIKE LOWER(?)"
+            sparams = [f"%{server}%"]
         if type_filter:
             rows = db.execute(
-                "SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)=? ORDER BY id DESC LIMIT ?",
-                (item, lvl, norm_type(type_filter), limit),
+                f"SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)=?{sf} ORDER BY id DESC LIMIT ?",
+                (item, lvl, norm_type(type_filter)) + tuple(sparams) + (limit,),
             ).fetchall()
             return [dict(r) for r in rows]
         else:
             buys = db.execute(
-                "SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)='buy' ORDER BY id DESC LIMIT ?",
-                (item, lvl, limit),
+                f"SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)='buy'{sf} ORDER BY id DESC LIMIT ?",
+                (item, lvl) + tuple(sparams) + (limit,),
             ).fetchall()
             sells = db.execute(
-                "SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)='sell' ORDER BY id DESC LIMIT ?",
-                (item, lvl, limit),
+                f"SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)='sell'{sf} ORDER BY id DESC LIMIT ?",
+                (item, lvl) + tuple(sparams) + (limit,),
             ).fetchall()
             return [dict(r) for r in buys], [dict(r) for r in sells]
 

@@ -384,18 +384,6 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 <nav class="tv-navbar">
     <div class="nav-left">
         <a href="/dashboard" class="tv-logo">MARKET MASTER</a>
-        <div class="server-select-box">
-            <select id="globalServerSelect" onchange="window.location.href='/item/{{ item_name|urlencode }}?lvl='+encodeURIComponent(document.getElementById('lvlSelect').value)+'&server='+this.value">
-                <option value="ZERO" {{ 'selected' if current_server == 'ZERO' }}>ZERO</option>
-                <option value="PANDORA" {{ 'selected' if current_server == 'PANDORA' }}>PANDORA</option>
-                <option value="AGARTHA" {{ 'selected' if current_server == 'AGARTHA' }}>AGARTHA</option>
-                <option value="FELIS" {{ 'selected' if current_server == 'FELIS' }}>FELIS</option>
-                <option value="DESTAN" {{ 'selected' if current_server == 'DESTAN' }}>DESTAN</option>
-                <option value="MINARK" {{ 'selected' if current_server == 'MINARK' }}>MINARK</option>
-                <option value="DRYADS" {{ 'selected' if current_server == 'DRYADS' }}>DRYADS</option>
-                <option value="OREADS" {{ 'selected' if current_server == 'OREADS' }}>OREADS</option>
-            </select>
-        </div>
     </div>
     <div class="nav-center">
         <div class="tv-search-wrapper">
@@ -493,7 +481,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
                         {% endfor %}
                       </div>
                     </div>
-                    <span class="exchange-name">ZERO Sunucusu</span>
+                    <span class="exchange-name">{{ current_server or 'Tumu' }} Sunucusu</span>
                     <span class="timeframe-badge">D</span>
                 </div>
             </div>
@@ -535,9 +523,10 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
         </div>
         <div class="symbol-price-block">
             {% set last_price = s.sell.median|int if s and s.sell else 0 %}
-            <div class="current-main-price">{{ "{:,}".format(last_price) }} <span class="currency-unit">Coins</span></div>
-            <div class="price-change-row {% if a and a.rsi_sell and a.rsi_sell > 50 %}up{% else %}down{% endif %}">
-                <span class="change-point">RSI: {{ a.rsi_sell|round(1) if a and a.rsi_sell else '-' }}</span>
+            <div id="livePriceDisplay" class="current-main-price">{{ "{:,}".format(last_price) }} <span class="currency-unit">Coins</span></div>
+            <div id="livePriceLabel" style="font-size:11px;color:#787b86;margin-top:-4px;font-weight:500">Son Kapaniş (Grafik)</div>
+            <div id="liveRsiRow" class="price-change-row {% if a and a.rsi_sell and a.rsi_sell > 50 %}up{% else %}down{% endif %}">
+                <span id="liveRsi" class="change-point">RSI: {{ a.rsi_sell|round(1) if a and a.rsi_sell else '-' }}</span>
             </div>
         </div>
     </div>
@@ -669,7 +658,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     <button class="ind-btn" data-ind="macd" style="--c:#2196f3">MACD</button>
     <button class="ind-btn" data-ind="cci" style="--c:#ff9800">CCI</button>
     <button class="ind-btn" data-ind="stochrsi" style="--c:#e91e63">StochRSI</button>
-    <button class="ind-btn" data-ind="ema" style="--c:#00bcd4">EMA</button>
+    <button class="ind-btn on" data-ind="ema" style="--c:#00bcd4">EMA</button>
     <button class="ind-btn" data-ind="sma" style="--c:#4caf50">SMA</button>
     <button class="ind-btn" data-ind="bollinger" style="--c:#ff5722">Bollinger</button>
     <button class="ind-btn" data-ind="supertrend" style="--c:#9c27b0">Supertrend</button>
@@ -771,8 +760,20 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 
   <script>
   const ITEM_NAME = {{ item|tojson }};
-  const CURRENT_SERVER = {{ current_server|tojson }};
+  let CURRENT_SERVER = {{ current_server|tojson }};
   const ITEM_LVL = {{ lvl|tojson }};
+
+  if (!CURRENT_SERVER) {
+    var saved = localStorage.getItem('selectedServer');
+    if (saved) {
+      CURRENT_SERVER = saved;
+      var url = new URL(window.location.href);
+      url.searchParams.set('server', saved);
+      window.location.replace(url.toString());
+    }
+  } else {
+    localStorage.setItem('selectedServer', CURRENT_SERVER);
+  }
 
   /* ---- LEVEL DROPDOWN ---- */
   function toggleLvlDropdown() {
@@ -986,7 +987,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
   /* ---- CHART DATA ---- */
   let kChart = null;
   let currentChartType = 'candle';
-  let activeInds = { rsi: false, macd: false, cci: false, stochrsi: false, ema: false, sma: false, bollinger: false, supertrend: false, atr: false, fibonacci: false, sr: false, ohlc: false };
+  let activeInds = { rsi: false, macd: false, cci: false, stochrsi: false, ema: true, sma: false, bollinger: false, supertrend: false, atr: false, fibonacci: false, sr: false, ohlc: false };
 
   function median(arr) {
     if (arr.length === 0) return 0;
@@ -1359,6 +1360,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     console.log('[CHART] kChart created:', !!kChart);
 
     kChart.applyNewData(klineData);
+    try { kChart.timeScale().fitContent(); kChart.priceScale('right').applyOptions({ autoScale: true }); } catch(e) {}
     updateKlineIndicators();
   }
 
@@ -1427,6 +1429,16 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     } catch(e) {}
   }
 
+  function updateEMALines() {
+    if (!kChart) return;
+    if (activeInds.ema) {
+      try { kChart.removeIndicator('CUSTOM_EMA9', 'candle_pane'); } catch(e) {}
+      try { kChart.removeIndicator('CUSTOM_EMA21', 'candle_pane'); } catch(e) {}
+      kChart.createIndicator('CUSTOM_EMA9', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_EMA21', false, { id: 'candle_pane' });
+    }
+  }
+
   function switchChartType(type) {
     currentChartType = type;
     if (kChart) {
@@ -1455,22 +1467,26 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     const d = buildSortedData(filtered);
     if (d.sorted.length < 2) return;
 
-    const rsiVals = calcRSI(d.sellPrices, 14);
-    const ma5Vals = calcSMA(d.sellPrices, 5);
-    const ma20Vals = calcSMA(d.sellPrices, 20);
-    const ema9 = calcEMA(d.uniPrices, 9);
-    const ema21 = calcEMA(d.uniPrices, 21);
-    const macd = calcMACD(d.uniPrices);
-    const cciVals = calcCCI(d.uniPrices, 20);
-    const stochRsiVals = calcStochRSI(d.sellPrices, 14);
-    const bollinger = calcBollinger(d.uniPrices, 20);
-    const atrVals = calcATR(d.uniPrices, 14);
-    const supertrend = calcSupertrend(d.uniPrices, 10, 3);
-    const fibLevels = calcFibLevels(Math.max(...d.uniPrices), Math.min(...d.uniPrices));
-    const srPts = findSR(d.uniPrices, d.uniTimes, 3);
+    const ohlcCloses = (currentOHLC && currentOHLC.length > 0) ? currentOHLC.map(c => c.close) : null;
+    const rsiInput = ohlcCloses && ohlcCloses.length >= 15 ? ohlcCloses : d.sellPrices;
+    const maInput = ohlcCloses && ohlcCloses.length >= 20 ? ohlcCloses : d.uniPrices;
+
+    const rsiVals = calcRSI(rsiInput, 14);
+    const ma5Vals = calcSMA(rsiInput, 5);
+    const ma20Vals = calcSMA(rsiInput, 20);
+    const ema9 = calcEMA(maInput, 9);
+    const ema21 = calcEMA(maInput, 21);
+    const macd = calcMACD(maInput);
+    const cciVals = calcCCI(maInput, 20);
+    const stochRsiVals = calcStochRSI(rsiInput, 14);
+    const bollinger = calcBollinger(maInput, 20);
+    const atrVals = calcATR(maInput, 14);
+    const supertrend = calcSupertrend(maInput, 10, 3);
+    const fibLevels = calcFibLevels(Math.max(...maInput), Math.min(...maInput));
+    const srPts = findSR(maInput, d.uniTimes, 3);
     const crossPts = findCrossPoints(ma5Vals, ma20Vals);
     const ohlc = buildOHLC(d);
-    const lastPrice = d.uniPrices[d.uniPrices.length - 1];
+    const lastPrice = (ohlcCloses && ohlcCloses.length > 0) ? ohlcCloses[ohlcCloses.length - 1] : d.uniPrices[d.uniPrices.length - 1];
 
     function lastVal(arr) { const v = arr.filter(x => x !== null); return v.length > 0 ? v[v.length - 1] : null; }
     function fmtP(v) { return v !== null ? Number(v).toLocaleString('tr-TR') : '-'; }
@@ -1641,6 +1657,10 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 
   /* ---- CONTROLS ---- */
   let currentOHLC = [];
+  let currentEMA9 = [];
+  let currentEMA21 = [];
+  let currentAnalytics = {};
+  let currentStats = {};
   let autoInterval = 'auto';
 
   function showShimmer() {
@@ -1656,13 +1676,15 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     }
   }
 
-  async function fetchOHLC(interval, showLoading) {
+  async function fetchItemFull(interval, showLoading) {
     if (showLoading) showShimmer();
     try {
-      const resp = await fetch('/api/ohlc/' + encodeURIComponent(ITEM_NAME) + '?lvl=' + encodeURIComponent(ITEM_LVL) + '&interval=' + encodeURIComponent(interval));
+      let url = '/api/item-full/' + encodeURIComponent(ITEM_NAME) + '?lvl=' + encodeURIComponent(ITEM_LVL) + '&interval=' + encodeURIComponent(interval);
+      if (CURRENT_SERVER) url += '&server=' + encodeURIComponent(CURRENT_SERVER);
+      const resp = await fetch(url);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const data = await resp.json();
-      console.log('[OHLC] ' + interval + ': ' + (data.ohlc ? data.ohlc.length : 0) + ' mum');
+      console.log('[ITEM-FULL] ' + interval + ': ' + (data.ohlc ? data.ohlc.length : 0) + ' mum, EMA9=' + data.ema9?.length + ', EMA21=' + data.ema21?.length);
       let ohlc = data.ohlc || [];
       
       if (ohlc.length === 0) {
@@ -1682,10 +1704,18 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
         }
       }
       
-      return ohlc.sort((a, b) => a.time - b.time);
+      return {
+        ohlc: ohlc.sort((a, b) => a.time - b.time),
+        ema9: data.ema9 || [],
+        ema21: data.ema21 || [],
+        analytics: data.analytics || {},
+        stats: data.stats || {},
+        last_close: data.last_close,
+        last_rsi: data.last_rsi,
+      };
     } catch(e) {
-      console.error('[ERR] fetchOHLC:', e);
-      return currentOHLC;
+      console.error('[ERR] fetchItemFull:', e);
+      return { ohlc: currentOHLC, ema9: currentEMA9, ema21: currentEMA21, analytics: currentAnalytics, stats: currentStats };
     } finally {
       if (showLoading) hideShimmer();
     }
@@ -1694,13 +1724,43 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
   async function applyRange(interval) {
     currentRange = interval;
     document.querySelectorAll('.tv-btn').forEach(b => b.classList.toggle('active', b.dataset.interval === interval));
-    currentOHLC = await fetchOHLC(interval, true);
-    if (!currentOHLC || currentOHLC.length < 2) {
-      currentOHLC = await fetchOHLC('auto', false);
+    const full = await fetchItemFull(interval, true);
+    if (!full.ohlc || full.ohlc.length < 2) {
+      const fallback = await fetchItemFull('auto', false);
+      currentOHLC = fallback.ohlc;
+      currentEMA9 = fallback.ema9;
+      currentEMA21 = fallback.ema21;
+      currentAnalytics = fallback.analytics;
+      currentStats = fallback.stats;
+    } else {
+      currentOHLC = full.ohlc;
+      currentEMA9 = full.ema9;
+      currentEMA21 = full.ema21;
+      currentAnalytics = full.analytics;
+      currentStats = full.stats;
     }
     rawOHLCData = currentOHLC;
     buildMainChart();
+    updateHeaderFromFull(full.ohlc.length > 0 ? full : (full.ohlc.length > 0 ? full : null));
     try { buildIndicatorTable(); } catch(e) { console.error('[ERR] buildIndicatorTable:', e.message); }
+  }
+
+  function updateHeaderFromFull(data) {
+    if (!data) return;
+    const closePrice = data.last_close || (data.ohlc && data.ohlc.length > 0 ? data.ohlc[data.ohlc.length - 1].close : null);
+    if (closePrice) {
+      const priceEl = document.getElementById('livePriceDisplay');
+      if (priceEl) priceEl.innerHTML = closePrice.toLocaleString('tr-TR') + ' <span class="currency-unit">Coins</span>';
+      const chartPriceEl = document.getElementById('livePrice');
+      if (chartPriceEl) chartPriceEl.textContent = closePrice.toLocaleString('tr-TR');
+    }
+    const rsiVal = data.last_rsi !== undefined && data.last_rsi !== null ? data.last_rsi : (data.analytics && data.analytics.rsi_sell ? data.analytics.rsi_sell : null);
+    if (rsiVal !== null && rsiVal !== undefined) {
+      const rsiEl = document.getElementById('liveRsi');
+      const rsiRow = document.getElementById('liveRsiRow');
+      if (rsiEl) rsiEl.textContent = 'RSI: ' + Number(rsiVal).toFixed(1);
+      if (rsiRow) rsiRow.className = 'price-change-row ' + (rsiVal > 50 ? 'up' : 'down');
+    }
   }
 
   document.querySelectorAll('.tv-btn').forEach(btn => {
@@ -1721,6 +1781,10 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     if (!btn || !btn.dataset.ind) return;
     activeInds[btn.dataset.ind] = !activeInds[btn.dataset.ind];
     btn.classList.toggle('on', activeInds[btn.dataset.ind]);
+    if (kChart) {
+      try { kChart.dispose(); } catch(e) {}
+      kChart = null;
+    }
     try { buildMainChart(); } catch(e) { console.error('[ERR] buildMainChart:', e.message); }
   });
 
@@ -1760,11 +1824,19 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
   }
 
   (async () => {
-    try { currentOHLC = await fetchOHLC('auto', true); } catch(e) {}
-    rawOHLCData = currentOHLC;
-    try { buildMainChart(); } catch(e) { console.error('[ERR] buildMainChart:', e.message, e.stack); }
-    try { buildIndicatorTable(); } catch(e) { console.error('[ERR] buildIndicatorTable:', e.message); }
-    try { drawGauge(); } catch(e) { console.error('[ERR] drawGauge:', e.message); }
+    try {
+      const full = await fetchItemFull('auto', true);
+      currentOHLC = full.ohlc;
+      currentEMA9 = full.ema9;
+      currentEMA21 = full.ema21;
+      currentAnalytics = full.analytics;
+      currentStats = full.stats;
+      rawOHLCData = currentOHLC;
+      try { buildMainChart(); } catch(e) { console.error('[ERR] buildMainChart:', e.message, e.stack); }
+      try { buildIndicatorTable(); } catch(e) { console.error('[ERR] buildIndicatorTable:', e.message); }
+      try { drawGauge(); } catch(e) { console.error('[ERR] drawGauge:', e.message); }
+      updateHeaderFromFull(full);
+    } catch(e) { console.error('[ERR] init:', e.message); }
   })();
 
   /* ---- CHART TOOLS ---- */
@@ -1813,6 +1885,87 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
       }
     }, 200);
   });
+
+  /* ---- CANLI OTOMATIK YENILEME ---- */
+  const AUTO_REFRESH_MS = 30000;
+  let lastKnownTime = 0;
+
+  function toKlineData(ohlcData) {
+    const seen = new Set();
+    return ohlcData.map(d => ({
+      timestamp: d.time * 1000,
+      open: Math.round(parseFloat(d.open)),
+      high: Math.round(parseFloat(d.high)),
+      low: Math.round(parseFloat(d.low)),
+      close: Math.round(parseFloat(d.close)),
+      volume: parseInt(d.volume) || 1
+    })).filter(d => {
+      if (d.timestamp <= 0 || isNaN(d.timestamp)) return false;
+      if (seen.has(d.timestamp)) return false;
+      seen.add(d.timestamp);
+      return true;
+    }).sort((a, b) => a.timestamp - b.timestamp);
+  }
+
+  function fitChart() {
+    if (!kChart) return;
+    try {
+      kChart.timeScale().fitContent();
+      kChart.priceScale('right').applyOptions({ autoScale: true });
+    } catch(e) {}
+  }
+
+  function startLiveRefresh() {
+    if (liveTimer) clearInterval(liveTimer);
+    liveTimer = setInterval(async () => {
+      try {
+        const full = await fetchItemFull(currentRange, false);
+        if (!full || !full.ohlc || full.ohlc.length === 0) return;
+
+        currentOHLC = full.ohlc;
+        currentEMA9 = full.ema9;
+        currentEMA21 = full.ema21;
+        currentAnalytics = full.analytics;
+        currentStats = full.stats;
+        rawOHLCData = currentOHLC;
+
+        updateHeaderFromFull(full);
+
+        const klineData = toKlineData(currentOHLC);
+        if (!klineData || klineData.length === 0) return;
+
+        const latestBar = klineData[klineData.length - 1];
+        const newTime = latestBar.timestamp;
+
+        if (!kChart) return;
+
+        if (lastKnownTime === 0) {
+          lastKnownTime = newTime;
+          fitChart();
+          return;
+        }
+
+        if (newTime > lastKnownTime) {
+          kChart.applyNewData(klineData);
+          lastKnownTime = newTime;
+          setTimeout(() => { fitChart(); updateEMALines(); }, 100);
+        } else if (newTime === lastKnownTime) {
+          kChart.updateData(latestBar);
+        }
+
+        updateEMALines();
+      } catch(e) { console.warn('[LIVE] Yenileme hatasi:', e.message); }
+    }, AUTO_REFRESH_MS);
+  }
+
+  setTimeout(() => {
+    if (currentOHLC && currentOHLC.length > 0) {
+      const kdata = toKlineData(currentOHLC);
+      if (kdata && kdata.length > 0) lastKnownTime = kdata[kdata.length - 1].timestamp;
+    }
+    fitChart();
+    startLiveRefresh();
+  }, 2000);
 </script>
 
 <div id="alarmModal" class="modal-backdrop">
@@ -1829,6 +1982,9 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     </div>
   </div>
 </div>
+
+<div style="text-align:center;padding:16px;color:#666;font-size:10px;border-top:1px solid #e0e3eb;margin-top:16px">Market Master v3.0 &copy; 2026 | <span id="onlineCount" style="color:#26a69a;font-weight:600"></span> | Iletisim: <span style="color:#e94560;font-weight:600">veribilimiveribilimidir@gmail.com</span></div>
+<script>function updateOnline(){fetch('/api/online').then(r=>r.json()).then(d=>{const el=document.getElementById('onlineCount');if(el)el.textContent='Aktif Kullanici: '+d.count}).catch(()=>{})}updateOnline();setInterval(updateOnline,30000)</script>
 
 </body>
 </html>

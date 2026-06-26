@@ -218,6 +218,7 @@ document.getElementById('serverFilter').addEventListener('change', () => {
 
 startAutoRefresh();
 </script>
-
+<div style="text-align:center;padding:16px;color:#555;font-size:10px;border-top:1px solid #1a1a2e;margin-top:16px">Market Master v3.0 &copy; 2026 | <span id="onlineCount" style="color:#26a69a;font-weight:600"></span> | Iletisim: <span style="color:#e94560;font-weight:600">veribilimiveribilimidir@gmail.com</span></div>
+<script>function updateOnline(){fetch('/api/online').then(r=>r.json()).then(d=>{const el=document.getElementById('onlineCount');if(el)el.textContent='Aktif Kullanici: '+d.count}).catch(()=>{})}updateOnline();setInterval(updateOnline,30000)</script>
 </body>
 </html>

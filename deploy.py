@@ -2,6 +2,7 @@ import requests
 import os
 import sys
 import json
+import time
 
 PYTHONANYWHERE_USER = "marketmaster"
 HOME_DIR = f"/home/{PYTHONANYWHERE_USER}"
@@ -12,6 +13,8 @@ FILES_TO_UPLOAD = [
     "webapp/database.py",
     "webapp/security.py",
     "webapp/portfolio.py",
+    "webapp/analytics.py",
+    "webapp/indicators.py",
     "core/config.py",
     "ui/settings_tab.py",
     "ui/bot_tab.py",
@@ -22,6 +25,7 @@ FILES_TO_UPLOAD = [
     "webapp/templates/item.html",
     "webapp/templates/item_index.html",
     "webapp/templates/live.html",
+    "webapp/templates/moderasyon.html",
 ]
 
 def get_token():
@@ -60,10 +64,18 @@ def upload_db(token):
     code, text = upload_file(token, db_path, "app_data.db")
     if code == 200:
         print("  DB yuklendi!")
-        return True
     else:
         print(f"  DB hatasi ({code}): {text[:100]}")
-        return False
+
+    auth_db = os.path.join(LOCAL_ROOT, "web_users.db")
+    if os.path.exists(auth_db):
+        code2, text2 = upload_file(token, auth_db, "web_users.db")
+        if code2 == 200:
+            print("  web_users.db yuklendi!")
+        else:
+            print(f"  web_users.db hatasi ({code2}): {text2[:100]}")
+
+    return True
 
 def upload_files(token):
     ok = 0
@@ -98,23 +110,25 @@ def main():
         print("Token gerekli!")
         sys.exit(1)
 
-    print("=" * 40)
-    print("PythonAnywhere Deploy")
-    print("=" * 40)
+    while True:
+        print("\n" + "=" * 40)
+        print("PythonAnywhere Deploy")
+        print("=" * 40)
 
-    print("\n1. DB yukleniyor...")
-    upload_db(token)
+        print("\n1. DB yukleniyor...")
+        upload_db(token)
 
-    print(f"\n2. {len(FILES_TO_UPLOAD)} dosya yukleniyor...")
-    ok, fail = upload_files(token)
-    print(f"\n   Sonuc: {ok} basarili, {fail} basarisiz")
+        print(f"\n2. {len(FILES_TO_UPLOAD)} dosya yukleniyor...")
+        ok, fail = upload_files(token)
+        print(f"\n   Sonuc: {ok} basarili, {fail} basarisiz")
 
-    print("\n3. Web app yeniden baslatiliyor...")
-    reload_web(token)
+        print("\n3. Web app yeniden baslatiliyor...")
+        reload_web(token)
 
-    print("\n" + "=" * 40)
-    print("Deploy tamamlandi!")
-    print("=" * 40)
+        print("\n" + "=" * 40)
+        print("Deploy tamamlandi! 3 sn bekleyip tekrar basliyor...")
+        print("=" * 40)
+        time.sleep(3)
 
 if __name__ == "__main__":
     main()

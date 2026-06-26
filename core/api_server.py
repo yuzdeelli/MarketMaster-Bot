@@ -98,7 +98,85 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   <div class="loading-dots">
     <span></span><span></span><span></span>
   </div>
+  <div style="margin-top:30px;width:100%;max-width:700px;text-align:left">
+    <div id="splitArea" style="display:flex;gap:12px">
+      <div style="flex:1;background:#16213e;border:1px solid #1a1a2e;border-radius:6px;padding:12px">
+        <div style="font-size:9px;color:#888;margin-bottom:6px">Parca 1</div>
+        <div id="part1" style="font-size:12px;color:#ddd;word-break:break-word;line-height:1.6;min-height:20px">Yukleniyor...</div>
+        <button onclick="copyPart(1)" style="margin-top:10px;padding:6px 16px;background:#2962FF;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600">Kopyala 1</button>
+      </div>
+      <div style="flex:1;background:#16213e;border:1px solid #1a1a2e;border-radius:6px;padding:12px">
+        <div style="font-size:9px;color:#888;margin-bottom:6px">Parca 2</div>
+        <div id="part2" style="font-size:12px;color:#ddd;word-break:break-word;line-height:1.6;min-height:20px">Yukleniyor...</div>
+        <button onclick="copyPart(2)" style="margin-top:10px;padding:6px 16px;background:#2962FF;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600">Kopyala 2</button>
+      </div>
+    </div>
+  </div>
 </div>
+<script>
+function loadSplitTicker() {
+  fetch('/api/ticker')
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var items = data.items || [];
+    var fullText = items.map(function(it) { return it.name; }).join(' / ');
+    if (!fullText) {
+      document.getElementById('part1').textContent = 'Ticker bos';
+      document.getElementById('part2').textContent = 'Ticker bos';
+      return;
+    }
+    var chars = fullText.replace(/\s+/g, ' ');
+    var half = Math.ceil(chars.length / 2);
+    var words = chars.split(' ');
+    var p1 = '', p2 = '';
+    for (var i = 0; i < words.length; i++) {
+      var chunk = (p1 ? ' ' : '') + words[i];
+      if ((p1 + chunk).replace(/\s+/g, ' ').length <= half || !p1) {
+        p1 += chunk;
+      } else {
+        p2 += (p2 ? ' ' : '') + words[i];
+      }
+    }
+    document.getElementById('part1').textContent = p1;
+    document.getElementById('part2').textContent = p2;
+  })
+  .catch(function() {
+    document.getElementById('part1').textContent = 'Hata olustu';
+    document.getElementById('part2').textContent = 'Hata olustu';
+  });
+}
+
+function copyPart(num) {
+  var text = document.getElementById('part' + num).textContent;
+  if (!text || text === 'Yukleniyor...' || text === 'Ticker bos') return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() { showBtn(num); }).catch(function() { fbCopy(text, num); });
+  } else {
+    fbCopy(text, num);
+  }
+}
+
+function fbCopy(text, num) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); showBtn(num); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+function showBtn(num) {
+  var btns = document.querySelectorAll('#splitArea button');
+  var btn = btns[num - 1];
+  var orig = btn.textContent;
+  btn.textContent = 'Kopyalandi!';
+  btn.style.background = '#2ecc71';
+  setTimeout(function() { btn.textContent = orig; btn.style.background = '#2962FF'; }, 1200);
+}
+
+loadSplitTicker();
+</script>
 </body>
 </html>"""
 
@@ -529,8 +607,12 @@ ADMIN_DASHBOARD_HTML = r"""<!DOCTYPE html>
   .add-form button{padding:8px 16px;background:#e94560;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;}
   .add-form button:hover{background:#d63850;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
-  th{background:#16213e;color:#e94560;padding:8px 6px;text-align:left;font-weight:600;}
-  td{padding:6px;border-bottom:1px solid #1a1a2e;}
+  th{background:#16213e;color:#e94560;padding:8px 6px;text-align:left;font-weight:600;cursor:pointer;transition:background .15s}
+  th:hover{background:rgba(46,204,113,.15)}
+  th.copied{background:rgba(46,204,113,.25);color:#2ecc71}
+  td{padding:6px;border-bottom:1px solid #1a1a2e;cursor:pointer;transition:background .15s}
+  td:hover{background:rgba(46,204,113,.08)}
+  td.copied{background:rgba(46,204,113,.15)!important;color:#2ecc71}
   tr:hover{background:#16213e;}
   .btn-del{padding:3px 10px;background:#e74c3c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;}
   .btn-del:hover{background:#c0392b;}
@@ -623,6 +705,56 @@ function showToast(msg,err){const t=document.getElementById('toast');t.textConte
 
 loadStats();loadQueue();loadLogs();
 setInterval(loadStats,10000);setInterval(loadQueue,30000);
+
+document.addEventListener('click', function(e) {
+  if (e.target.tagName === 'TD') {
+    var text = e.target.textContent.trim();
+    if (!text) return;
+    copyText(text, e.target);
+  }
+  if (e.target.tagName === 'TH') {
+    var th = e.target;
+    var colIdx = Array.from(th.parentNode.children).indexOf(th);
+    var rows = document.querySelectorAll('table tbody tr');
+    var values = [];
+    rows.forEach(function(row) {
+      var cells = row.querySelectorAll('td');
+      if (cells[colIdx]) values.push(cells[colIdx].textContent.trim());
+    });
+    var text = values.join('\n');
+    if (!text) return;
+    copyText(text, th);
+  }
+});
+
+function copyText(text, el) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      showCopied(el);
+    }).catch(function() {
+      fallbackCopy(text, el);
+    });
+  } else {
+    fallbackCopy(text, el);
+  }
+}
+
+function fallbackCopy(text, el) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); showCopied(el); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+function showCopied(el) {
+  el.classList.add('copied');
+  var orig = el.textContent;
+  el.textContent = 'Kopyalandi!';
+  setTimeout(function() { el.textContent = orig; el.classList.remove('copied'); }, 1200);
+}
 </script>
 </body>
 </html>"""

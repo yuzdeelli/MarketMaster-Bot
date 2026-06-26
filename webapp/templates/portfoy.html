@@ -23,8 +23,12 @@ h1{font-size:20px;color:#fff;margin-bottom:4px}
 .stat-box .v.gold{color:#f1c40f}
 table{width:100%;border-collapse:collapse;font-size:12px;background:#111122;border-radius:8px;overflow:hidden;margin-top:12px}
 thead{background:#0d0d1a}
-th{padding:10px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#555;border-bottom:1px solid #1a1a2e}
-td{padding:9px 12px;border-bottom:1px solid #0f0f1a}
+th{padding:10px 12px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#555;border-bottom:1px solid #1a1a2e;cursor:pointer;transition:background .15s}
+th:hover{background:rgba(46,204,113,.1)}
+th.copied{background:rgba(46,204,113,.2);color:#2ecc71}
+td{padding:9px 12px;border-bottom:1px solid #0f0f1a;cursor:pointer;transition:background .15s}
+td:hover{background:rgba(233,69,96,.08)}
+td.copied{background:rgba(46,204,113,.15)!important;color:#2ecc71}
 tr:hover{background:rgba(233,69,96,.03)}
 .item-name{color:#fff;font-weight:600}
 .item-lvl{color:#f1c40f;font-weight:600}
@@ -93,15 +97,62 @@ function copyTable() {
   let text = 'Item\tSeviye\tAlis\tStrateji\tSatis\tAdet\tKar\n';
   rows.forEach(row => {
     const cells = row.querySelectorAll('td');
-    text += Array.from(cells).map(c => c.textContent.trim()).join('\t') + '\n';
+    text += Array.from(cells).slice(1).map(c => c.textContent.trim()).join('\t') + '\n';
   });
-  navigator.clipboard.writeText(text).then(() => {
+  copyText(text, document.querySelector('.btn-copy'));
+  setTimeout(() => {
     const btn = document.querySelector('.btn-copy');
-    btn.textContent = 'Kopyalandi!';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = 'Tabloyu Kopyala'; btn.classList.remove('copied'); }, 2000);
-  });
+    btn.textContent = 'Tabloyu Kopyala';
+    btn.classList.remove('copied');
+  }, 2000);
 }
+
+function copyText(text, el) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => showCopied(el)).catch(() => fallbackCopy(text, el));
+  } else {
+    fallbackCopy(text, el);
+  }
+}
+
+function fallbackCopy(text, el) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); showCopied(el); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+function showCopied(el) {
+  el.classList.add('copied');
+  const orig = el.textContent;
+  el.textContent = 'Kopyalandi!';
+  setTimeout(() => { el.textContent = orig; el.classList.remove('copied'); }, 1200);
+}
+
+document.querySelectorAll('table tbody td').forEach(td => {
+  td.addEventListener('click', function() {
+    const text = this.textContent.trim();
+    if (!text) return;
+    copyText(text, this);
+  });
+});
+
+document.querySelectorAll('table thead th').forEach((th, colIdx) => {
+  th.addEventListener('click', function() {
+    const rows = document.querySelectorAll('table tbody tr');
+    const values = [];
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      if (cells[colIdx]) values.push(cells[colIdx].textContent.trim());
+    });
+    const text = values.join('\n');
+    if (!text) return;
+    copyText(text, th);
+  });
+});
 </script>
 </body>
 </html>

@@ -195,7 +195,8 @@ body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;background:#0a0a0a;co
     <div class="nav-left">
         <a href="/dashboard" class="tv-logo">MARKET MASTER</a>
         <div class="server-select-box">
-            <select id="globalServerSelect" onchange="window.location.href='/dashboard?server='+this.value">
+            <select id="globalServerSelect" onchange="localStorage.setItem('selectedServer',this.value);window.location.href='/dashboard?server='+this.value">
+                <option value="">Tumu</option>
                 <option value="ZERO" {{ 'selected' if current_server == 'ZERO' }}>ZERO</option>
                 <option value="PANDORA" {{ 'selected' if current_server == 'PANDORA' }}>PANDORA</option>
                 <option value="AGARTHA" {{ 'selected' if current_server == 'AGARTHA' }}>AGARTHA</option>
@@ -252,8 +253,8 @@ body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;background:#0a0a0a;co
   <div class="main-content">
     <div class="tab-bar">
       <button class="tab-btn" onclick="switchTab('top50')">Top 50</button>
-      <button class="tab-btn" onclick="switchTab('high8')">Top 50 +8 / Rev+5</button>
-      <button class="tab-btn" onclick="switchTab('mid7')">Top 50 +7</button>
+      <button class="tab-btn" onclick="switchTab('high8')">+8 / Rev+5</button>
+      <button class="tab-btn" onclick="switchTab('mid7')">+7 / +1R</button>
       <button class="tab-btn" onclick="switchTab('vol')">Firsat / Populer</button>
     </div>
     <div class="top-grid" id="topGrid"></div>
@@ -297,9 +298,19 @@ body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;background:#0a0a0a;co
 
 </div>
 
-<div class="footer">Market Master v3.0 &copy; 2026</div>
+<div class="footer">Market Master v3.0 &copy; 2026 | <span id="onlineCount" style="color:#26a69a;font-weight:600"></span> | Iletisim: <span style="color:#e94560;font-weight:600">veribilimiveribilimidir@gmail.com</span></div>
+<script>function updateOnline(){fetch('/api/online').then(r=>r.json()).then(d=>{const el=document.getElementById('onlineCount');if(el)el.textContent='Aktif Kullanici: '+d.count}).catch(()=>{})}updateOnline();setInterval(updateOnline,30000)</script>
 
 <script>
+var _sv = {{ current_server|tojson }};
+if (!_sv) {
+  var saved = localStorage.getItem('selectedServer');
+  if (saved) {
+    window.location.replace('/dashboard?server=' + encodeURIComponent(saved));
+  }
+} else {
+  localStorage.setItem('selectedServer', _sv);
+}
 const COLORS=['#e94560','#2962FF','#089981','#f59e0b','#a855f7','#ef4444','#06b6d4','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#10b981','#e11d48','#0ea5e9','#d946ef','#84cc16','#f43f5e','#6d28d9','#059669'];
 function getItemColor(n){var h=0;for(var i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return COLORS[Math.abs(h)%COLORS.length]}
 function getItemInitial(n){return n.split(' ').map(function(w){return w[0]}).join('').substring(0,2).toUpperCase()}

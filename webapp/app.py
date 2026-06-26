@@ -36,6 +36,8 @@ except Exception:
 
 _rate_data = {}
 _burst_data = {}
+ONLINE_TIMEOUT = 300
+ONLINE_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "online_users.json")
 RATE_WINDOW = 6
 BURST_THRESHOLD = 3
 BURST_BLOCK_AFTER = 900
@@ -51,6 +53,41 @@ def _get_client_ip():
     if forwarded:
         return forwarded.split(",")[0].strip()
     return remote
+
+
+def _track_online(ip):
+    now = time.time()
+    data = {}
+    if os.path.exists(ONLINE_FILE):
+        try:
+            with open(ONLINE_FILE, "r") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    data[ip] = now
+    stale = [k for k, v in data.items() if now - v > ONLINE_TIMEOUT]
+    for k in stale:
+        del data[k]
+    try:
+        with open(ONLINE_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+
+def _get_online_count():
+    now = time.time()
+    data = {}
+    if os.path.exists(ONLINE_FILE):
+        try:
+            with open(ONLINE_FILE, "r") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    stale = [k for k, v in data.items() if now - v > ONLINE_TIMEOUT]
+    for k in stale:
+        del data[k]
+    return len(data)
 
 _cache = {}
 def cache_get(key, ttl=300):
@@ -83,6 +120,7 @@ app.jinja_env.globals['csrf_token'] = generate_csrf_token
 def security_check():
     request._start_time = time.time()
     ip = _get_client_ip()
+    _track_online(ip)
 
     if not check_ip_whitelist(ip) and request.path not in ("/api/ticker",):
         log_audit_event("IP_BLOCKED", ip_address=ip)
@@ -181,7 +219,7 @@ def security_check():
 
     if request.path.startswith("/api/"):
         if not session.get("logged_in"):
-            public_apis = ("/api/items", "/api/ohlc/", "/api/stats", "/api/servers", "/api/top-items", "/api/live", "/api/item/", "/api/analytics/", "/api/search", "/api/autocomplete", "/api/price-changes", "/api/analiz/", "/api/ticker")
+            public_apis = ("/api/items", "/api/ohlc/", "/api/stats", "/api/servers", "/api/top-items", "/api/live", "/api/item/", "/api/item-full/", "/api/online", "/api/analytics/", "/api/search", "/api/autocomplete", "/api/price-changes", "/api/analiz/", "/api/ticker")
             is_public = any(request.path.startswith(p) for p in public_apis)
             if not is_public:
                 token = request.headers.get("X-API-Token", "")
@@ -391,9 +429,10 @@ def api_item_detail(item):
     elif not lvl.startswith("+"):
         lvl = "+" + lvl
     lvl = lvl.replace(" ", "")
-    stats = get_item_stats(item, lvl)
-    prices = get_price_history(item, lvl, limit=200)
-    analytics = get_full_analytics(item, lvl)
+    server = request.args.get("server", "").strip() or None
+    stats = get_item_stats(item, lvl, server=server)
+    prices = get_price_history(item, lvl, limit=200, server=server)
+    analytics = get_full_analytics(item, lvl, server=server)
     return jsonify({
         "item": item,
         "lvl": lvl,
@@ -422,6 +461,81 @@ def api_ohlc(item):
     else:
         ohlc = get_ohlc_data(item, lvl, interval, limit, server=server, ptype=ptype)
     return jsonify({"item": item, "lvl": lvl, "interval": interval, "ohlc": ohlc, "count": len(ohlc)})
+
+
+@app.route("/api/item-full/<path:item>")
+def api_item_full(item):
+    """Tek bir JSON payload: OHLC + stats + indicators hepsi ayni DB snapshot'indan.
+    Single Source of Truth - grafik ve kart ayni veri besler.
+    """
+    from webapp.indicators import calc_ema, calc_rsi
+
+    lvl = request.args.get("lvl", "")
+    lvl = lvl.replace(" ", "").replace("(", "").replace(")", "").strip()
+    if lvl == "0" or lvl == "+0" or lvl == "":
+        lvl = "+0"
+    elif not lvl.startswith("+"):
+        lvl = "+" + lvl
+    lvl = lvl.replace(" ", "")
+    interval = request.args.get("interval", "auto")
+    limit = request.args.get("limit", 500, type=int)
+    server = request.args.get("server", "").strip() or None
+    ptype = request.args.get("type", "sell").strip() or "sell"
+
+    if interval == "all":
+        ohlc = get_ohlc_data(item, lvl, "auto", limit=2000, server=server, ptype=ptype)
+    else:
+        ohlc = get_ohlc_data(item, lvl, interval, limit, server=server, ptype=ptype)
+
+    closes = [d["close"] for d in ohlc] if ohlc else []
+
+    ema9_series = calc_ema(closes, 9) if len(closes) >= 2 else []
+    ema21_series = calc_ema(closes, 21) if len(closes) >= 2 else []
+    rsi_series = calc_rsi(closes, 14) if len(closes) >= 15 else []
+
+    ema9_data = [{"time": ohlc[i]["time"], "value": v} for i, v in enumerate(ema9_series) if v is not None] if ema9_series else []
+    ema21_data = [{"time": ohlc[i]["time"], "value": v} for i, v in enumerate(ema21_series) if v is not None] if ema21_series else []
+
+    last_ema9 = next((v for v in reversed(ema9_series) if v is not None), None)
+    last_ema21 = next((v for v in reversed(ema21_series) if v is not None), None)
+    last_rsi_ohlc = next((v for v in reversed(rsi_series) if v is not None), None)
+
+    stats = get_item_stats(item, lvl, server=server)
+    analytics = get_full_analytics(item, lvl, server=server)
+    prices = get_price_history(item, lvl, limit=200, server=server)
+
+    sell_prices = [p["price"] for p in prices if p.get("type") == "sell" and p.get("price")]
+    buy_prices = [p["price"] for p in prices if p.get("type") == "buy" and p.get("price")]
+    if len(sell_prices) >= 2:
+        recent = sell_prices[-1]
+        previous = sell_prices[-2]
+        analytics["change_pct"] = round((recent - previous) / previous * 100, 1) if previous > 0 else 0
+    else:
+        analytics["change_pct"] = 0
+
+    analytics["sell_vol"] = len(sell_prices)
+    analytics["buy_vol"] = len(buy_prices)
+    analytics["total_vol"] = len(sell_prices) + len(buy_prices)
+
+    analytics["rsi_sell"] = last_rsi_ohlc
+    analytics["last_close"] = closes[-1] if closes else None
+    analytics["ema9"] = last_ema9
+    analytics["ema21"] = last_ema21
+
+    return jsonify({
+        "item": item,
+        "lvl": lvl,
+        "interval": interval,
+        "ohlc": ohlc,
+        "ohlc_count": len(ohlc),
+        "stats": stats,
+        "analytics": analytics,
+        "prices": prices,
+        "ema9": ema9_data,
+        "ema21": ema21_data,
+        "last_close": closes[-1] if closes else None,
+        "last_rsi": last_rsi_ohlc,
+    })
 
 
 @app.route("/api/live_analysis/<path:item>")
@@ -456,6 +570,11 @@ def api_live_analysis(item):
 @app.route("/api/servers")
 def api_servers():
     return jsonify({"servers": get_unique_servers()})
+
+
+@app.route("/api/online")
+def api_online():
+    return jsonify({"count": _get_online_count()})
 
 
 @app.route("/api/items/names")
@@ -807,9 +926,12 @@ def dashboard():
 
 @app.route("/item")
 def item_index():
-    from webapp.database import get_all_item_names
+    from webapp.database import get_all_item_names, get_db
     all_items = get_all_item_names()
-    return render_template("item_index.html", all_items=all_items)
+    server = request.args.get("server", "").strip()
+    with get_db() as db:
+        servers = [r[0] for r in db.execute("SELECT DISTINCT TRIM(server) FROM prices WHERE server IS NOT NULL AND server != '' ORDER BY server").fetchall()]
+    return render_template("item_index.html", all_items=all_items, servers=servers, current_server=server)
 
 
 @app.route("/item/<path:item>")
@@ -834,9 +956,9 @@ def item_detail(item):
             matched = name
             break
 
-    stats = get_item_stats(matched, lvl)
-    analytics = get_full_analytics(matched, lvl)
-    prices = get_price_history(matched, lvl, limit=200)
+    stats = get_item_stats(matched, lvl, server=server)
+    analytics = get_full_analytics(matched, lvl, server=server)
+    prices = get_price_history(matched, lvl, limit=200, server=server)
 
     sell_prices = [p["price"] for p in prices if p.get("type") == "sell" and p.get("price")]
     buy_prices = [p["price"] for p in prices if p.get("type") == "buy" and p.get("price")]
@@ -852,10 +974,15 @@ def item_detail(item):
     analytics["total_vol"] = len(sell_prices) + len(buy_prices)
 
     with get_db() as db:
+        sf = ""
+        sparams = []
+        if server:
+            sf = " AND LOWER(TRIM(server)) LIKE LOWER(?)"
+            sparams = [f"%{server}%"]
         seller_rows = db.execute(
-            """SELECT seller, COUNT(*) as cnt FROM prices
-               WHERE item_name=? AND item_lvl=? AND LOWER(type)='sell' AND seller IS NOT NULL AND seller != ''
-               GROUP BY seller""", (item, lvl)
+            f"""SELECT seller, COUNT(*) as cnt FROM prices
+               WHERE item_name=? AND item_lvl=? AND LOWER(type)='sell' AND seller IS NOT NULL AND seller != ''{sf}
+               GROUP BY seller""", (item, lvl) + tuple(sparams)
         ).fetchall()
     analytics["seller_count"] = len(seller_rows)
     analytics["top_seller_cnt"] = seller_rows[0]["cnt"] if seller_rows else 0
@@ -890,7 +1017,12 @@ def item_detail(item):
     analytics["buy_signal_color"] = buy_signal_color
 
     with get_db() as db:
-        rows = db.execute("SELECT item_lvl AS lvl, COUNT(*) as cnt FROM prices WHERE item_name=? GROUP BY item_lvl", (matched,)).fetchall()
+        sf = ""
+        sparams = []
+        if server:
+            sf = " AND LOWER(TRIM(server)) LIKE LOWER(?)"
+            sparams = [f"%{server}%"]
+        rows = db.execute(f"SELECT item_lvl AS lvl, COUNT(*) as cnt FROM prices WHERE item_name=?{sf} GROUP BY item_lvl", (matched,) + tuple(sparams)).fetchall()
     lvl_map = {}
     for r in rows:
         raw = (r["lvl"] or "").strip()
@@ -939,17 +1071,20 @@ def moderasyon_page():
 
 @app.route("/portfoy")
 def portfoy_page():
-    from webapp.portfolio import load_items, compute_portfolio
+    from webapp.portfolio import load_items, compute_row
     items = load_items()
-    enriched, servers, slogan_lines = compute_portfolio()
+    enriched = [compute_row(it) for it in items]
+    servers = list(set(s for it in enriched for s in it.get("market", {}).keys()))
+    slogan_lines = []
     return render_template("portfoy.html", items=enriched, servers=servers, slogan_lines=slogan_lines)
 
 
 @app.route("/api/portfoy/export-csv")
 def portfoy_export_csv():
-    from webapp.portfolio import load_items, compute_portfolio
+    from webapp.portfolio import load_items, compute_row
     import io, csv
-    enriched, _, _ = compute_portfolio()
+    items = load_items()
+    enriched = [compute_row(it) for it in items]
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["Item", "Seviye", "Alis Fiyati", "Strateji", "Satis Fiyati", "Adet", "Kar"])
