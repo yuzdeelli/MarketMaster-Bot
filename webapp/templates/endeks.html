@@ -536,13 +536,12 @@ function renderItemResult(itemServers,allLevels,filters){
   });
 
   const hasFilter=filters.level&&filters.level.length>0;
-  const displayData=hasFilter?itemServers:_itemAllLevels;
-  document.getElementById('levelStatus').textContent=hasFilter?('Secili: '+filters.level):('Toplam: '+displayData.length+' sonuc');
+  document.getElementById('levelStatus').textContent=hasFilter?('Secili: '+filters.level):('Toplam: '+_itemAllLevels.length+' sonuc');
 
-  // Table: show all levels
+  // Table: ALWAYS show all levels
   const tbody=document.getElementById('itemServersBody');
-  document.getElementById('tableTitle').innerHTML='Sunucu Detaylari <span style="font-size:10px;color:#666;font-weight:normal">('+displayData.length+' sonuc, +tum sonuclar)</span>';
-  tbody.innerHTML=displayData.map((it,idx)=>{
+  document.getElementById('tableTitle').innerHTML='Sunucu Detaylari <span style="font-size:10px;color:#666;font-weight:normal">('+_itemAllLevels.length+' sonuc, +tum sonuclar)</span>';
+  tbody.innerHTML=_itemAllLevels.map((it,idx)=>{
     const sell=it.med_sell||0;
     const buy=it.med_buy||0;
     const makas=sell&&buy?(((sell-buy)/buy)*100).toFixed(1):'-';
