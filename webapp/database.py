@@ -454,7 +454,15 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
         if not max_epoch:
             return []
 
-        if interval == "auto":
+        if interval == "all":
+            n = len(all_records)
+            candle_sec = 86400
+            for threshold, v, c in AUTO_CONFIGS:
+                if n <= threshold:
+                    candle_sec = c
+                    break
+            start_epoch = 0
+        elif interval == "auto":
             n = len(all_records)
             view_sec = None
             candle_sec = None
@@ -466,6 +474,7 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
             if view_sec is None:
                 view_sec = int(timedelta(days=365).total_seconds())
                 candle_sec = 86400
+            start_epoch = max_epoch - view_sec
         else:
             cfg = TIMEFRAME_CONFIG.get(interval)
             if cfg:
@@ -474,11 +483,10 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
             else:
                 view_sec = 86400
                 candle_sec = 30 * 60
+            start_epoch = max_epoch - view_sec
 
         if candle_size is not None:
             candle_sec = int(candle_size)
-
-        start_epoch = max_epoch - view_sec
 
         chart_data = []
         last_close = None
