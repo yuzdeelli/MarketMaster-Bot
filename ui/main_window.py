@@ -236,15 +236,15 @@ class KnightMarketMasterV3(QMainWindow):
 
         if hasattr(self, 'combo_start_date') and self.combo_start_date.currentText():
             raw_start = self.combo_start_date.currentText()
-            is_default_start = (raw_start == today_str)
-            if minutes is not None or not is_default_start:
+            if minutes is not None or raw_start != today_str:
                 start_dt = f"{raw_start} {self.combo_start_hour.currentText()}:00"
 
         if hasattr(self, 'combo_end_date') and self.combo_end_date.currentText():
             raw_end = self.combo_end_date.currentText()
-            is_default_end = (raw_end == today_str)
-            if minutes is not None or not is_default_end:
+            if minutes is not None or raw_end != today_str:
                 end_dt = f"{raw_end} {self.combo_end_hour.currentText()}:00"
+            elif minutes is None and start_dt is not None:
+                end_dt = f"{raw_end} 23:59:00"
 
         return {"time_limit_minutes": minutes, "start_date": start_dt, "end_date": end_dt}
 
