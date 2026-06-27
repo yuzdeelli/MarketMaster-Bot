@@ -1,35 +1,8 @@
 import sqlite3
 import threading
 import re
-import requests
 from datetime import datetime
 from core.usko_api import UskoApiClient, SERVER_MAP_REVERSE
-
-
-PA_SYNC_URL = "https://marketmaster.pythonanywhere.com/api/sync"
-PA_API_TOKEN = "fd5c80513edc6ec7218745dc9d7a8787bcc11597"
-
-
-def push_to_pa(records):
-    if not records:
-        return
-    def _send():
-        try:
-            resp = requests.post(PA_SYNC_URL,
-                                 json={"records": records},
-                                 headers={
-                                     "X-API-Token": PA_API_TOKEN,
-                                     "Content-Type": "application/json"
-                                 },
-                                 timeout=30)
-            if resp.status_code == 200:
-                data = resp.json()
-                print(f"  PA: {data.get('inserted', 0)} kayit yuklendi")
-            else:
-                print(f"  PA: Hata {resp.status_code}")
-        except Exception as e:
-            print(f"  PA: {type(e).__name__}")
-    threading.Thread(target=_send, daemon=True).start()
 
 
 # +0 YAZILABILECEK ITEM LISTESI (tam isim veya keyword)
@@ -111,7 +84,6 @@ class MarketEngine:
 
     def scan_dual(self, srv_name, srv_id, item_name, lvls, stop_event=None):
         results = []
-        pa_records = []
         server_code = self.api_client.resolve_server_code(srv_name)
 
         for lvl_str in lvls:
@@ -134,36 +106,21 @@ class MarketEngine:
             for item in api_result:
                 ptype = "sell" if item["Pazar Tipi"] == "Sell" else "buy"
                 item_server = item.get("Sunucu", srv_name)
-                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                record = {
+                self.save_to_db({
                     "Sunucu": item_server,
                     "Pazar Tipi": ptype,
                     "İtem Adı": item_name,
                     "Artı": item["Artı"],
                     "Fiyat": item["Fiyat"],
-                    "Zaman": now,
-                }
-                self.save_to_db(record)
-                pa_records.append({
-                    "item_name": item_name,
-                    "item_lvl": item["Artı"] or "+0",
-                    "price": item["Fiyat"],
-                    "type": ptype,
-                    "seller": str(item.get("UserID", "")),
-                    "server": item_server,
-                    "timestamp": now,
-                    "last_seen": now,
+                    "Zaman": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 })
                 print(f"[{item_server}] {item_name} {item['Artı']} -> {item['Fiyat']:,.0f} Coins")
             results.extend(api_result)
 
-        if pa_records:
-            push_to_pa(pa_records)
         return results
 
     def scan_single_server(self, server_display, item_name, plus=None, stop_event=None, rebirth=False):
         results = []
-        pa_records = []
         api_result, error = self.api_client.scan_item(
             server_display=server_display,
             item_name=item_name,
@@ -179,31 +136,16 @@ class MarketEngine:
         for item in api_result:
             ptype = "sell" if item["Pazar Tipi"] == "Sell" else "buy"
             item_server = item.get("Sunucu", server_display)
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            record = {
+            self.save_to_db({
                 "Sunucu": item_server,
                 "Pazar Tipi": ptype,
                 "İtem Adı": item_name,
                 "Artı": item["Artı"],
                 "Fiyat": item["Fiyat"],
-                "Zaman": now,
-            }
-            self.save_to_db(record)
-            pa_records.append({
-                "item_name": item_name,
-                "item_lvl": item["Artı"] or "+0",
-                "price": item["Fiyat"],
-                "type": ptype,
-                "seller": str(item.get("UserID", "")),
-                "server": item_server,
-                "timestamp": now,
-                "last_seen": now,
+                "Zaman": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             })
             print(f"[{item_server}] {item_name} {item['Artı']} -> {item['Fiyat']:,.0f} Coins")
         results.extend(api_result)
-
-        if pa_records:
-            push_to_pa(pa_records)
         return results
 
     def save_to_db(self, data):
