@@ -72,7 +72,7 @@ class PortfolioTab:
         self.port_count_entry = QLineEdit("1"); self.port_count_entry.setFixedWidth(40)
         top.addWidget(self.port_count_entry)
         top.addWidget(QLabel("Alis:"))
-        buy_strategies = ["Auto", "Kar Odaklı", "Spread Filtreli", "Min-Max Rastgele", "Otonom", "Min", "Min-Max Ortasi", "Min*0.97+%Kar", "Q1*0.97+%Kar", "%95 Alt*0.97+%Kar", "Q1", "Medyan", "Mod", "Q3", "Max", "%95 Alt", "%95 Ust", "Manuel"]
+        buy_strategies = ["Auto", "Kar Odaklı", "Spread Filtreli", "Min-Max Rastgele", "Otonom", "Min", "Min-Max Ortasi", "Min*0.97+%Kar", "Q1*0.97+%Kar", "%95 Alt*0.97+%Kar", "Max %3 Vergi", "Q1", "Medyan", "Mod", "Q3", "Max", "%95 Alt", "%95 Ust", "Manuel"]
         self.port_buy_strat_combo = QComboBox(); self.port_buy_strat_combo.addItems(buy_strategies); self.port_buy_strat_combo.setCurrentText("Medyan"); self.port_buy_strat_combo.setFixedWidth(100)
         top.addWidget(self.port_buy_strat_combo)
         self.port_buy_entry = QLineEdit(); self.port_buy_entry.setPlaceholderText("Manuel"); self.port_buy_entry.setFixedWidth(60)
@@ -304,6 +304,8 @@ class PortfolioTab:
                         buy_price = b.get("q1", 0)
                     else:
                         buy_price = b.get("min", 0)
+                elif buy_strat == "Max %3 Vergi":
+                    buy_price = stats['buy'].get("max", 0) * 0.97
                 else:
                     s_map = {"Min": "min", "Q1": "q1", "Medyan": "median", "Mod": "mode", "Q3": "q3", "Max": "max", "%95 Alt": "ci_low", "%95 Ust": "ci_high"}
                     buy_price = stats['buy'].get(s_map.get(buy_strat, "median"), 0)
@@ -507,6 +509,10 @@ class PortfolioTab:
                     else:
                         current_buy_price = 0
                         auto_buy_detail = "Veri Yok"
+                    item['auto_buy_detail'] = auto_buy_detail
+                elif buy_strat == "Max %3 Vergi":
+                    current_buy_price = stats['buy'].get("max", 0) * 0.97
+                    auto_buy_detail = "Max*0.97"
                     item['auto_buy_detail'] = auto_buy_detail
                 elif buy_strat in ("Min*0.97+%Kar", "Q1*0.97+%Kar", "%95 Alt*0.97+%Kar") and stats.get("sell"):
                     key_map = {"Min*0.97+%Kar": "min", "Q1*0.97+%Kar": "q1", "%95 Alt*0.97+%Kar": "ci_low"}
@@ -999,6 +1005,8 @@ class PortfolioTab:
                             item['buy_price'] = np.percentile(raw_b, lower_percentile * 100)
                         else:
                             item['buy_price'] = stats['buy'].get('median', 0)
+                    elif strat == "Max %3 Vergi":
+                        item['buy_price'] = stats['buy'].get("max", 0) * 0.97
                     else:
                         item['buy_price'] = stats['buy'].get(s_map.get(strat, "median"), 0)
                 else:
@@ -1177,6 +1185,11 @@ class PortfolioTab:
                         except ValueError:
                             margin = 0
                         item['buy_price'] = base * 0.97 / (1 + margin / 100)
+                elif strat == "Max %3 Vergi":
+                    db_lvl = "" if item['lvl'] in ["+0", "0"] else item['lvl']
+                    stats = self.master.get_cached_stats(item['name'], db_lvl, server=db_server)
+                    if stats and stats.get('buy'):
+                        item['buy_price'] = stats['buy'].get("max", 0) * 0.97
                 else:
                     db_lvl = "" if item['lvl'] in ["+0", "0"] else item['lvl']
                     stats = self.master.get_cached_stats(item['name'], db_lvl, server=db_server)
@@ -1264,7 +1277,7 @@ class PortfolioTab:
 
         layout.addWidget(QLabel("Alis Stratejisi:"))
         buy_strat_combo = QComboBox()
-        buy_strat_combo.addItems(["Auto", "Kar Odaklı", "Spread Filtreli", "Min-Max Rastgele", "Otonom", "Min", "Min-Max Ortasi", "Min*0.97+%Kar", "Q1*0.97+%Kar", "%95 Alt*0.97+%Kar", "Q1", "Medyan", "Mod", "Q3", "Max", "%95 Alt", "%95 Ust", "Manuel"])
+        buy_strat_combo.addItems(["Auto", "Kar Odaklı", "Spread Filtreli", "Min-Max Rastgele", "Otonom", "Min", "Min-Max Ortasi", "Min*0.97+%Kar", "Q1*0.97+%Kar", "%95 Alt*0.97+%Kar", "Max %3 Vergi", "Q1", "Medyan", "Mod", "Q3", "Max", "%95 Alt", "%95 Ust", "Manuel"])
         buy_strat_combo.setCurrentText(item.get("buy_strategy", "Medyan"))
         layout.addWidget(buy_strat_combo)
 
@@ -1372,6 +1385,11 @@ class PortfolioTab:
                         new_buy_price = b.get("q1", 0)
                     else:
                         new_buy_price = b.get("min", 0)
+            elif buy_strat == "Max %3 Vergi":
+                db_lvl = "" if item['lvl'] in ["+0", "0"] else item['lvl']
+                stats = self.master.analyzer.get_item_stats(item['name'], db_lvl, time_limit_minutes=self.master.get_time_filter_minutes())
+                if stats and stats.get('buy'):
+                    new_buy_price = stats['buy'].get("max", 0) * 0.97
             else:
                 db_lvl = "" if item['lvl'] in ["+0", "0"] else item['lvl']
                 stats = self.master.analyzer.get_item_stats(item['name'], db_lvl, time_limit_minutes=self.master.get_time_filter_minutes())
