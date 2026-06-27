@@ -159,8 +159,8 @@ class StrategyTab:
             source = "MANUEL FIYAT"
         else:
             max_buy = stats["buy"]["max"] if stats.get("buy") else sell_val * 0.85
-            buy_val = max_buy * off_rate
-            source = f"OTOMATIK %{100-(off_rate*100):.1f} TEKLIF"
+            buy_val = max_buy * 0.97 * off_rate
+            source = f"OTOMATIK %%3 Vergi + %{100-(off_rate*100):.1f} Indirim"
 
         total_cost = buy_val * count
         total_rev = sell_val * count
@@ -170,8 +170,10 @@ class StrategyTab:
 
         report += "\nTICARI TEKLIF VE STRATEJI\n"
         report += "--------------------------------------------\n"
-        report += f"Pazar Alis Fiyati:  {buy_val/0.97:,.0f} (Vergi Dahil Kurman Gereken)\n"
-        report += f"Elden Alis Teklifin: {buy_val:,.0f} ({source})\n"
+        report += f"Pazar Alis Fiyati:  {buy_val/(0.97*off_rate):,.0f} (Ham Max Buy)\n"
+        report += f"+ %%3 Vergi:         {buy_val/off_rate:,.0f}\n"
+        report += f"+ Indirim Orani:     %{100-(off_rate*100):.1f}\n"
+        report += f"Net Alis Teklifin:  {buy_val:,.0f} ({source})\n"
         report += f"TOPLAM NET KAR:         {total_profit:,.0f}\n"
         report += f"Kar Marji:               %{margin:.2f}\n"
         status = "Karli / Firsat" if margin > 8 else ("Stabil" if margin > 3 else "Riskli / Dar Makas")
