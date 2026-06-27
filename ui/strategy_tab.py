@@ -83,6 +83,7 @@ class StrategyTab:
     def run_deep_strategy(self):
         name = self.it_combo.get().strip()
         lvl = self.lvl_combo.currentText().strip()
+        server = self.server_combo.currentText().strip()
         try:
             count = int(self.count_entry.text())
         except ValueError:
@@ -97,18 +98,31 @@ class StrategyTab:
         db_lvl = "" if lvl in ["+0", "0"] else lvl
         filter_params = self.master.get_active_filter_params()
 
+        db_server = None
+        display_server = server
+        if server == "Tum Sunucular":
+            db_server = None
+            display_server = "Tum Sunucular"
+        elif server in self.SERVER_GROUPS:
+            db_server = server.replace("Tum ", "").strip()
+            display_server = server
+        else:
+            db_server = server
+            display_server = server
+
         stats = self.master.analyzer.get_item_stats(
             item_name=name, item_lvl=db_lvl,
             time_limit_minutes=filter_params["time_limit_minutes"],
             start_date=filter_params["start_date"],
-            end_date=filter_params["end_date"])
+            end_date=filter_params["end_date"],
+            server=db_server)
 
         self.strat_res_box.clear()
         if not stats:
             self.strat_res_box.setPlainText(f"'{name} {lvl}' icin secilen zaman araliginda DB'de yeterli veri yok.")
             return
 
-        report = f"DERIN ANALIZ: {name.upper()} {lvl} (Adet: {count})\n"
+        report = f"DERIN ANALIZ: {name.upper()} {lvl} [{display_server}] (Adet: {count})\n"
         report += "=" * 75 + "\n"
         report += "Manipulasyon Duvari: %1.0 Aktif (Uc Degerler Temizlendi)\n\n"
 
