@@ -325,34 +325,34 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
     from datetime import timedelta
 
     TIMEFRAME_CONFIG = {
-        "15":  (timedelta(minutes=15),  5 * 60),
-        "30":  (timedelta(minutes=30),  5 * 60),
-        "45":  (timedelta(minutes=45),  5 * 60),
-        "60":  (timedelta(hours=1),     5 * 60),
-        "120": (timedelta(hours=2),     5 * 60),
-        "240": (timedelta(hours=4),     15 * 60),
-        "480": (timedelta(hours=8),     15 * 60),
-        "960": (timedelta(hours=16),    30 * 60),
-        "1440":(timedelta(hours=24),    30 * 60),
-        "10080":(timedelta(days=7),     3600),
-        "20160":(timedelta(days=14),    3600),
-        "40320":(timedelta(days=28),    3600),
-        "80640":(timedelta(days=56),    7200),
-        "161280":(timedelta(days=112),  7200),
-        "302400":(timedelta(days=365),  86400),
-        "43200":(timedelta(days=30),    86400),
-        "129600":(timedelta(days=90),   86400),
-        "259200":(timedelta(days=180),  86400),
-        "518400":(timedelta(days=365),  86400),
+        "15":     5 * 60,
+        "30":     5 * 60,
+        "45":     5 * 60,
+        "60":     5 * 60,
+        "120":    5 * 60,
+        "240":    15 * 60,
+        "480":    15 * 60,
+        "960":    30 * 60,
+        "1440":   30 * 60,
+        "10080":  3600,
+        "20160":  3600,
+        "40320":  3600,
+        "80640":  7200,
+        "161280": 7200,
+        "302400": 86400,
+        "43200":  86400,
+        "129600": 86400,
+        "259200": 86400,
+        "518400": 86400,
     }
 
     AUTO_CONFIGS = [
-        (30,    timedelta(minutes=15),  60),
-        (100,   timedelta(hours=1),     5 * 60),
-        (300,   timedelta(hours=4),     15 * 60),
-        (1000,  timedelta(days=1),      30 * 60),
-        (5000,  timedelta(days=7),      3600),
-        (20000, timedelta(days=30),     86400),
+        (30,    60),
+        (100,   5 * 60),
+        (300,   15 * 60),
+        (1000,  30 * 60),
+        (5000,  3600),
+        (20000, 86400),
     ]
 
     with get_db() as db:
@@ -418,20 +418,12 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
             max_id = all_records[-1]["id"]
             id_range = max(1, max_id - min_id)
             now_epoch = int(datetime.utcnow().timestamp())
-
-            if interval == "auto":
-                view_sec = int(timedelta(days=30).total_seconds())
-            elif TIMEFRAME_CONFIG.get(interval):
-                view_sec = int(TIMEFRAME_CONFIG[interval][0].total_seconds())
-            else:
-                view_sec = 86400
-
-            end_epoch = now_epoch
-            start_epoch = end_epoch - view_sec
+            min_epoch = now_epoch - len(all_records) * 60
+            total_span = max(1, now_epoch - min_epoch)
 
             for r in all_records:
                 id_ratio = (r["id"] - min_id) / id_range
-                r["epoch"] = start_epoch + int(id_ratio * view_sec)
+                r["epoch"] = min_epoch + int(id_ratio * total_span)
         else:
             timed = [r for r in all_records if r["epoch"]]
             untimed = [r for r in all_records if not r["epoch"]]
@@ -455,26 +447,18 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
 
         if interval == "auto":
             n = len(all_records)
-            view_sec = None
             candle_sec = None
-            for threshold, v, c in AUTO_CONFIGS:
+            for threshold, c in AUTO_CONFIGS:
                 if n <= threshold:
-                    view_sec = int(v.total_seconds())
                     candle_sec = c
                     break
-            if view_sec is None:
-                view_sec = int(timedelta(days=365).total_seconds())
+            if candle_sec is None:
                 candle_sec = 86400
         else:
             cfg = TIMEFRAME_CONFIG.get(interval)
-            if cfg:
-                view_sec = int(cfg[0].total_seconds())
-                candle_sec = cfg[1]
-            else:
-                view_sec = 86400
-                candle_sec = 30 * 60
+            candle_sec = cfg if cfg else 30 * 60
 
-        start_epoch = max_epoch - view_sec
+        start_epoch = all_records[0]["epoch"]
 
         chart_data = []
         last_close = None

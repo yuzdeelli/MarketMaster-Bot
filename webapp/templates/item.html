@@ -791,7 +791,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
   let PRICES = {{ prices|tojson }};
   let currentRange = '1440';
   let liveTimer = null;
-  const TZ_OFFSET_SEC = -new Date().getTimezoneOffset() * 60;
+  const TZ_OFFSET_SEC = 0;
 
   /* ---- TIMESTAMP ---- */
   function parseTS(ts) {
@@ -1427,7 +1427,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     if (!kChart) return;
 
     ['CUSTOM_SMA5', 'CUSTOM_SMA20', 'CUSTOM_EMA9', 'CUSTOM_EMA21', 'CUSTOM_BB', 'CUSTOM_BB_Lower', 'CUSTOM_BB_Mid', 'CUSTOM_SUPERTREND', 'CUSTOM_FIB', 'CUSTOM_SR'].forEach(name => {
-      try { kChart.removeIndicator(name, 'candle_pane'); } catch(e) {}
+      try { kChart.removeIndicator(name, { pane: 'candle_pane' }); } catch(e) {}
     });
     ['CUSTOM_RSI', 'CUSTOM_STOCHRSI', 'CUSTOM_MACD', 'CUSTOM_CCI', 'CUSTOM_ATR'].forEach(name => {
       try { kChart.removeIndicator(name); } catch(e) {}
@@ -1438,42 +1438,42 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     try { kChart.removeIndicator('WR'); } catch(e) {}
 
     if (activeInds.sma) {
-      kChart.createIndicator('CUSTOM_SMA5', false, { id: 'candle_pane' });
-      kChart.createIndicator('CUSTOM_SMA20', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_SMA5', { isStack: true, pane: { id: 'candle_pane' } });
+      kChart.createIndicator('CUSTOM_SMA20', { isStack: true, pane: { id: 'candle_pane' } });
     }
     if (activeInds.ema) {
-      kChart.createIndicator('CUSTOM_EMA9', false, { id: 'candle_pane' });
-      kChart.createIndicator('CUSTOM_EMA21', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_EMA9', { isStack: true, pane: { id: 'candle_pane' } });
+      kChart.createIndicator('CUSTOM_EMA21', { isStack: true, pane: { id: 'candle_pane' } });
     }
     if (activeInds.bollinger) {
-      kChart.createIndicator('CUSTOM_BB', false, { id: 'candle_pane' });
-      kChart.createIndicator('CUSTOM_BB_Lower', false, { id: 'candle_pane' });
-      kChart.createIndicator('CUSTOM_BB_Mid', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_BB', { isStack: true, pane: { id: 'candle_pane' } });
+      kChart.createIndicator('CUSTOM_BB_Lower', { isStack: true, pane: { id: 'candle_pane' } });
+      kChart.createIndicator('CUSTOM_BB_Mid', { isStack: true, pane: { id: 'candle_pane' } });
     }
     if (activeInds.supertrend) {
-      kChart.createIndicator('CUSTOM_SUPERTREND', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_SUPERTREND', { isStack: true, pane: { id: 'candle_pane' } });
     }
     if (activeInds.fibonacci) {
-      kChart.createIndicator('CUSTOM_FIB', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_FIB', { isStack: true, pane: { id: 'candle_pane' } });
     }
     if (activeInds.sr) {
-      kChart.createIndicator('CUSTOM_SR', false, { id: 'candle_pane' });
+      kChart.createIndicator('CUSTOM_SR', { isStack: true, pane: { id: 'candle_pane' } });
     }
 
     if (activeInds.rsi) {
-      kChart.createIndicator('RSI', false, { id: 'rsi_pane', height: 80 });
+      kChart.createIndicator('RSI', { pane: { id: 'rsi_pane', height: 80 } });
     }
     if (activeInds.stochrsi) {
-      kChart.createIndicator('CUSTOM_STOCHRSI', false, { id: 'stochrsi_pane', height: 80 });
+      kChart.createIndicator('CUSTOM_STOCHRSI', { pane: { id: 'stochrsi_pane', height: 80 } });
     }
     if (activeInds.macd) {
-      kChart.createIndicator('MACD', false, { id: 'macd_pane', height: 80 });
+      kChart.createIndicator('MACD', { pane: { id: 'macd_pane', height: 80 } });
     }
     if (activeInds.cci) {
-      kChart.createIndicator('CCI', false, { id: 'cci_pane', height: 80 });
+      kChart.createIndicator('CCI', { pane: { id: 'cci_pane', height: 80 } });
     }
     if (activeInds.atr) {
-      kChart.createIndicator('CUSTOM_ATR', false, { id: 'atr_pane', height: 80 });
+      kChart.createIndicator('CUSTOM_ATR', { pane: { id: 'atr_pane', height: 80 } });
     }
 
     try {
@@ -1852,7 +1852,9 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
       try { kChart.dispose(); } catch(e) {}
       kChart = null;
     }
-    try { buildMainChart(); } catch(e) { console.error('[ERR] buildMainChart:', e.message); }
+    const container = document.getElementById('priceChart');
+    if (container) container.innerHTML = '';
+    setTimeout(function() { buildMainChart(); }, 50);
   });
 
   /* ---- GAUGE ---- */
@@ -2019,14 +2021,12 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 
         if (lastKnownTime === 0) {
           lastKnownTime = newTime;
-          fitChart();
           return;
         }
 
         if (newTime > lastKnownTime) {
           kChart.applyNewData(klineData);
           lastKnownTime = newTime;
-          setTimeout(() => { fitChart(); updateEMALines(); }, 100);
         } else if (newTime === lastKnownTime) {
           kChart.updateData(latestBar);
         }

@@ -13,8 +13,8 @@ PYTHONANYWHERE_TOKEN = "fd5c80513edc6ec7218745dc9d7a8787bcc11597"
 DB_LOCAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data.db")
 DB_REMOTE_PATH = "app_data.db"
 HASH_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".sync_hash")
-UPLOAD_TIMEOUT = 300
-MAX_RETRIES = 3
+UPLOAD_TIMEOUT = 600
+MAX_RETRIES = 5
 
 
 def get_token():
@@ -58,29 +58,29 @@ def compress_db():
 
 
 def upload_file(token, local_path, remote_path, timeout=UPLOAD_TIMEOUT):
+    import socket
     full_path = f"{HOME_DIR}/{remote_path}"
     url = f"https://www.pythonanywhere.com/api/v0/user/{PYTHONANYWHERE_USER}/files/path/{full_path}"
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Token {token}", "Connection": "keep-alive"})
     for attempt in range(1, MAX_RETRIES + 1):
         try:
+            socket.setdefaulttimeout(60)
             with open(local_path, "rb") as f:
-                resp = requests.post(url, headers={"Authorization": f"Token {token}"}, files={"content": f}, timeout=timeout)
+                resp = session.post(url, files={"content": f}, timeout=(60, timeout), stream=False)
             if resp.status_code in (200, 201):
                 return resp.status_code, resp.text
             if attempt < MAX_RETRIES:
-                print(f"    Deneme {attempt}/{MAX_RETRIES} basarisiz ({resp.status_code}), tekrar deneniyor...")
-                time.sleep(5)
+                wait = 15 * attempt
+                print(f"    Deneme {attempt}/{MAX_RETRIES} basarisiz ({resp.status_code}), {wait}s bekleniyor...")
+                time.sleep(wait)
             else:
                 return resp.status_code, resp.text
-        except requests.exceptions.Timeout:
-            if attempt < MAX_RETRIES:
-                print(f"    Deneme {attempt}/{MAX_RETRIES} timeout, tekrar deneniyor...")
-                time.sleep(5)
-            else:
-                return 0, "Timeout"
         except Exception as e:
             if attempt < MAX_RETRIES:
-                print(f"    Deneme {attempt}/{MAX_RETRIES} hata: {e}, tekrar deneniyor...")
-                time.sleep(5)
+                wait = 15 * attempt
+                print(f"    Deneme {attempt}/{MAX_RETRIES} hata: {type(e).__name__}, {wait}s bekleniyor...")
+                time.sleep(wait)
             else:
                 return 0, str(e)
     return 0, "Max retries"
@@ -116,14 +116,6 @@ def upload_db(token):
         print(f"  DB hatasi ({code}): {text[:200]}")
         return False
 
-    auth_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web_users.db")
-    if os.path.exists(auth_db):
-        code2, text2 = upload_file(token, auth_db, "web_users.db")
-        if code2 in (200, 201):
-            print("  web_users.db yuklendi!")
-        else:
-            print(f"  web_users.db hatasi ({code2}): {text2[:100]}")
-
     return True
 
 
@@ -143,6 +135,20 @@ def reload_web(token):
     return False
 
 
+def check_dns():
+    import socket
+    for i in range(3):
+        try:
+            socket.getaddrinfo("www.pythonanywhere.com", 443)
+            return True
+        except socket.gaierror:
+            if i < 2:
+                print(f"  DNS cozulemedi, {5*(i+1)}s bekleniyor...")
+                time.sleep(5 * (i + 1))
+                os.system("ipconfig /flushdns >nul 2>&1")
+    return False
+
+
 def main():
     token = get_token()
     if not token:
@@ -152,10 +158,12 @@ def main():
         print("3. Bu scripti tekrar calistir")
         sys.exit(1)
 
+    if not check_dns():
+        print("DNS cozulemedi, senkron iptal edildi!")
+        sys.exit(1)
+
     print("DB yukleniyor...")
     if upload_db(token):
-        print("\nWeb app yeniden baslatiliyor...")
-        reload_web(token)
         print("\nSenkron tamamlandi!")
     else:
         print("\nSenkron basarisiz!")
