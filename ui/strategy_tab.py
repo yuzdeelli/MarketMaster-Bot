@@ -104,7 +104,8 @@ class StrategyTab:
             db_server = None
             display_server = "Tum Sunucular"
         elif server in self.SERVER_GROUPS:
-            db_server = server.replace("Tum ", "").strip()
+            servers = self.SERVER_GROUPS[server]
+            db_server = servers[0].split()[0]
             display_server = server
         else:
             db_server = server
