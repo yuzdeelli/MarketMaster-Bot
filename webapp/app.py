@@ -219,14 +219,14 @@ def security_check():
 
     if request.path.startswith("/api/"):
         if not session.get("logged_in"):
-            public_apis = ("/api/items", "/api/ohlc/", "/api/stats", "/api/servers", "/api/top-items", "/api/live", "/api/item/", "/api/item-full/", "/api/online", "/api/analytics/", "/api/search", "/api/autocomplete", "/api/price-changes", "/api/analiz/", "/api/ticker")
+            public_apis = ("/api/items", "/api/ohlc/", "/api/stats", "/api/servers", "/api/top-items", "/api/live", "/api/item/", "/api/item-full/", "/api/online", "/api/analytics/", "/api/search", "/api/autocomplete", "/api/price-changes", "/api/analiz/", "/api/ticker", "/api/sync")
             is_public = any(request.path.startswith(p) for p in public_apis)
             if not is_public:
                 token = request.headers.get("X-API-Token", "")
                 if not verify_api_token(token):
                     return jsonify({"error": "Unauthorized"}), 401
 
-    if request.method == "POST" and request.path not in ("/login", "/api/push", "/api/search", "/api/ticker"):
+    if request.method == "POST" and request.path not in ("/login", "/api/push", "/api/search", "/api/ticker", "/api/sync"):
         token = request.headers.get("X-API-Token", "")
         if not (token and verify_api_token(token)):
             if not validate_csrf_token():
@@ -576,6 +576,39 @@ def api_servers():
 @app.route("/api/online")
 def api_online():
     return jsonify({"count": _get_online_count()})
+
+
+@app.route("/api/sync", methods=["POST"])
+def api_sync():
+    token = request.headers.get("X-API-Token", "")
+    if not verify_api_token(token):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json(silent=True)
+    if not data or "records" not in data:
+        return jsonify({"error": "records required"}), 400
+
+    records = data["records"]
+    if not records:
+        return jsonify({"inserted": 0})
+
+    from webapp.database import get_db
+    inserted = 0
+    with get_db() as db:
+        for r in records:
+            try:
+                db.execute(
+                    "INSERT OR IGNORE INTO prices (item_name, item_lvl, price, type, seller, server, timestamp, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (r.get("item_name", ""), r.get("item_lvl", "+0"), r.get("price", 0),
+                     r.get("type", "sell"), r.get("seller", ""), r.get("server", ""),
+                     r.get("timestamp", ""), r.get("last_seen", ""))
+                )
+                inserted += db.total_changes if hasattr(db, 'total_changes') else 1
+            except Exception:
+                pass
+        db.commit()
+
+    return jsonify({"inserted": inserted, "received": len(records)})
 
 
 @app.route("/api/items/names")
