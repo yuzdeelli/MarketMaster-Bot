@@ -539,6 +539,37 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
             chart_data.append(bar)
             bucket_t += candle_sec
 
+        if len(chart_data) > 2:
+            filled = [b for b in chart_data if b["volume"] > 0]
+            if len(filled) >= 2:
+                for i in range(len(chart_data)):
+                    if chart_data[i]["volume"] == 0:
+                        prev_idx = None
+                        next_idx = None
+                        for j in range(i - 1, -1, -1):
+                            if chart_data[j]["volume"] > 0:
+                                prev_idx = j
+                                break
+                        for j in range(i + 1, len(chart_data)):
+                            if chart_data[j]["volume"] > 0:
+                                next_idx = j
+                                break
+                        if prev_idx is not None and next_idx is not None:
+                            prev_close = chart_data[prev_idx]["close"]
+                            next_open = chart_data[next_idx]["open"]
+                            span = next_idx - prev_idx
+                            step = (i - prev_idx) / span
+                            interp = prev_close + (next_open - prev_close) * step
+                            chart_data[i]["open"] = interp
+                            chart_data[i]["high"] = interp
+                            chart_data[i]["low"] = interp
+                            chart_data[i]["close"] = interp
+                        elif prev_idx is not None:
+                            chart_data[i]["open"] = chart_data[prev_idx]["close"]
+                            chart_data[i]["high"] = chart_data[prev_idx]["close"]
+                            chart_data[i]["low"] = chart_data[prev_idx]["close"]
+                            chart_data[i]["close"] = chart_data[prev_idx]["close"]
+
         return chart_data[-limit:]
 
 
