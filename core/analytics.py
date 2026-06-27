@@ -20,6 +20,30 @@ class DataFrameAnalytics:
             return "WHERE server = ?", (server,)
         return "", ()
 
+    def _build_where(self, server=None, item_name=None, item_lvl=None, start_date=None, end_date=None):
+        conditions = []
+        params = []
+        if server:
+            conditions.append("server LIKE ?")
+            params.append(f"%{server}%")
+        if item_name:
+            conditions.append("item_name = ?")
+            params.append(item_name)
+        if item_lvl is not None:
+            if item_lvl in ("", "+0", "0"):
+                conditions.append("(item_lvl = '' OR item_lvl IS NULL OR item_lvl = '+0' OR item_lvl = '0')")
+            else:
+                conditions.append("item_lvl = ?")
+                params.append(item_lvl)
+        if start_date:
+            conditions.append("timestamp >= ?")
+            params.append(start_date[:10])
+        if end_date:
+            conditions.append("timestamp <= ?")
+            params.append(end_date[:10])
+        where = "WHERE " + " AND ".join(conditions) if conditions else ""
+        return where, tuple(params)
+
     @staticmethod
     def _iqr_filter(series):
         q1 = series.quantile(0.25)
@@ -206,8 +230,8 @@ class DataFrameAnalytics:
             "liquidity": self.liquidity(server),
         }
 
-    def volatility(self, server=None, limit=20):
-        where, params = self._server_filter(server)
+    def volatility(self, server=None, limit=20, item_name=None, item_lvl=None, start_date=None, end_date=None):
+        where, params = self._build_where(server, item_name, item_lvl, start_date, end_date)
         df = self._read(
             f"SELECT item_name, item_lvl, price FROM prices {where} GROUP BY item_name, item_lvl, id",
             params
@@ -234,8 +258,8 @@ class DataFrameAnalytics:
         rows.sort(key=lambda x: x["cv"], reverse=True)
         return {"rows": rows[:limit]}
 
-    def demand(self, server=None, limit=20):
-        where, params = self._server_filter(server)
+    def demand(self, server=None, limit=20, item_name=None, item_lvl=None, start_date=None, end_date=None):
+        where, params = self._build_where(server, item_name, item_lvl, start_date, end_date)
         df = self._read(
             f"SELECT item_name, COUNT(DISTINCT seller) as seller_count, COUNT(*) as listing_count "
             f"FROM prices {where} GROUP BY item_name ORDER BY listing_count DESC LIMIT ?",
@@ -305,8 +329,8 @@ class DataFrameAnalytics:
         rows.sort(key=lambda x: abs(x["degisim"]), reverse=True)
         return {"rows": rows[:20]}
 
-    def liquidity(self, server=None, limit=20):
-        where, params = self._server_filter(server)
+    def liquidity(self, server=None, limit=20, item_name=None, item_lvl=None, start_date=None, end_date=None):
+        where, params = self._build_where(server, item_name, item_lvl, start_date, end_date)
         df = self._read(
             f"SELECT item_name, COUNT(*) as ilan_sayisi, "
             f"COUNT(DISTINCT seller) as satici_sayisi, "

@@ -125,6 +125,9 @@ class StrategyTab:
 
         report = f"DERIN ANALIZ: {name.upper()} {lvl} [{display_server}] (Adet: {count})\n"
         report += "=" * 75 + "\n"
+        sd = filter_params.get("start_date") or "Baslangic Yok"
+        ed = filter_params.get("end_date") or "Bitis Yok"
+        report += f"Tarih Araligi: {sd}  -->  {ed}\n"
         report += "Manipulasyon Duvari: %1.0 Aktif (Uc Degerler Temizlendi)\n\n"
 
         for mode in ("buy", "sell"):
@@ -198,9 +201,12 @@ class StrategyTab:
         try:
             from core.analytics import DataFrameAnalytics
             analytics = DataFrameAnalytics(self.master.db_name)
-            vol = analytics.volatility()
-            dem = analytics.demand()
-            liq = analytics.liquidity()
+            a_kw = dict(server=db_server, item_name=name, item_lvl=db_lvl,
+                        start_date=filter_params.get("start_date"),
+                        end_date=filter_params.get("end_date"))
+            vol = analytics.volatility(**a_kw, limit=10)
+            dem = analytics.demand(**a_kw, limit=10)
+            liq = analytics.liquidity(**a_kw, limit=10)
 
             report += "\n\nVOLATILITE (FIYAT OYNAKLIGI)\n--------------------------------------------\n"
             for r in vol.get("rows", [])[:10]:
@@ -213,8 +219,8 @@ class StrategyTab:
             report += "\nLIKIDITE (SATIS HIZI)\n--------------------------------------------\n"
             for r in liq.get("rows", [])[:10]:
                 report += f"  {r['item']}: {r['ilan']} ilan, {r['satici']} satici  [{r['ilk']} - {r['son']}]\n"
-        except Exception:
-            pass
+        except Exception as e:
+            report += f"\n[HATA] Analiz: {e}\n"
 
         self.strat_res_box.setPlainText(report)
 
