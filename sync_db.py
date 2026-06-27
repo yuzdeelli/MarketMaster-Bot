@@ -4,12 +4,12 @@ import sys
 import sqlite3
 import json
 import time
+from datetime import datetime
 
 DB_LOCAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_data.db")
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sync_state.json")
 SYNC_URL = "https://marketmaster.pythonanywhere.com/api/sync"
 PA_API_TOKEN = "7628b6d2eb3f90bfb598bec5036aca85aa1cb8b31473f4269c4202e6d047cb7c"
-BATCH_SIZE = 500
 
 
 def load_state():
@@ -24,28 +24,70 @@ def save_state(state):
         json.dump(state, f)
 
 
-def get_max_id():
-    conn = sqlite3.connect(DB_LOCAL)
-    row = conn.execute("SELECT MAX(id) FROM prices").fetchone()
-    conn.close()
-    return row[0] if row and row[0] else 0
-
-
-def get_new_records(last_id, limit=BATCH_SIZE):
+def get_item_list():
     conn = sqlite3.connect(DB_LOCAL)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
-        "SELECT item_name, item_lvl, price, type, seller, server, timestamp, last_seen "
-        "FROM prices WHERE id > ? ORDER BY id ASC LIMIT ?",
-        (last_id, limit)
+        "SELECT DISTINCT item_name, item_lvl, server FROM prices ORDER BY item_name"
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 
-def push_batch(records):
+def get_prices(item_name, item_lvl, server, ptype=None):
+    conn = sqlite3.connect(DB_LOCAL)
+    conn.row_factory = sqlite3.Row
+    query = "SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND server LIKE ?"
+    params = [item_name, item_lvl, f"%{server}%"]
+    if ptype:
+        query += " AND type=?"
+        params.append(ptype)
+    query += " ORDER BY id ASC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def calc_stats(prices):
+    if not prices:
+        return {"min": 0, "q1": 0, "median": 0, "q3": 0, "max": 0, "count": 0}
+    vals = sorted([p["price"] for p in prices if p["price"] > 0])
+    if not vals:
+        return {"min": 0, "q1": 0, "median": 0, "q3": 0, "max": 0, "count": 0}
+    n = len(vals)
+    import statistics
+    return {
+        "min": vals[0],
+        "q1": vals[n // 4] if n > 3 else vals[0],
+        "median": statistics.median(vals),
+        "q3": vals[3 * n // 4] if n > 3 else vals[-1],
+        "max": vals[-1],
+        "count": n,
+    }
+
+
+def build_snapshot(item_name, item_lvl, server):
+    sells = get_prices(item_name, item_lvl, server, "sell")
+    buys = get_prices(item_name, item_lvl, server, "buy")
+    sell_stats = calc_stats(sells)
+    buy_stats = calc_stats(buys)
+    all_prices = sells + buys
+    return {
+        "item_name": item_name,
+        "item_lvl": item_lvl,
+        "server": server,
+        "sell_stats": sell_stats,
+        "buy_stats": buy_stats,
+        "sell_count": len(sells),
+        "buy_count": len(buys),
+        "last_price": all_prices[-1]["price"] if all_prices else 0,
+        "last_time": all_prices[-1]["timestamp"] if all_prices else "",
+    }
+
+
+def push_snapshots(snapshots):
     resp = requests.post(SYNC_URL,
-                         json={"records": records},
+                         json={"snapshots": snapshots},
                          headers={
                              "X-API-Token": PA_API_TOKEN,
                              "Content-Type": "application/json"
@@ -64,40 +106,32 @@ def main():
 
     state = load_state()
     last_id = state.get("last_synced_id", 0)
-    max_id = get_max_id()
+
+    conn = sqlite3.connect(DB_LOCAL)
+    row = conn.execute("SELECT MAX(id) FROM prices").fetchone()
+    max_id = row[0] if row and row[0] else 0
+    conn.close()
 
     if max_id <= last_id:
         print("Yeni kayit yok.")
         return
 
-    total = max_id - last_id
-    print(f"{total} yeni kayit (ID > {last_id})")
+    print(f"Yeni veri var (ID > {last_id}). Snapshot'lar hesaplaniyor...")
+    items = get_item_list()
+    snapshots = []
+    for item in items:
+        snap = build_snapshot(item["item_name"], item["item_lvl"], item["server"])
+        snapshots.append(snap)
 
-    sent = 0
-    current_id = last_id
+    print(f"  {len(snapshots)} item snapshot hazir")
 
-    while True:
-        records = get_new_records(current_id)
-        if not records:
-            break
+    inserted = push_snapshots(snapshots)
+    print(f"  PA'ye {inserted} snapshot yuklendi")
 
-        inserted = push_batch(records)
-        sent += inserted
-        current_id_result = current_id
-
-        for r in records:
-            pass
-        current_id = max_id
-
-        state["last_synced_id"] = current_id
-        save_state(state)
-        print(f"  {sent}/{total} yuklendi")
-
-        if len(records) < BATCH_SIZE:
-            break
-        time.sleep(0.3)
-
-    print(f"Tamamlandi: {sent} kayit sendikronize edildi.")
+    state["last_synced_id"] = max_id
+    state["snapshot_count"] = len(snapshots)
+    save_state(state)
+    print("Tamamlandi!")
 
 
 if __name__ == "__main__":

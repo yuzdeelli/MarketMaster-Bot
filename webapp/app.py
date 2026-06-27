@@ -585,30 +585,45 @@ def api_sync():
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json(silent=True)
-    if not data or "records" not in data:
-        return jsonify({"error": "records required"}), 400
-
-    records = data["records"]
-    if not records:
-        return jsonify({"inserted": 0})
+    if not data:
+        return jsonify({"error": "data required"}), 400
 
     from webapp.database import get_db
-    inserted = 0
-    with get_db() as db:
-        for r in records:
-            try:
-                db.execute(
-                    "INSERT OR IGNORE INTO prices (item_name, item_lvl, price, type, seller, server, timestamp, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (r.get("item_name", ""), r.get("item_lvl", "+0"), r.get("price", 0),
-                     r.get("type", "sell"), r.get("seller", ""), r.get("server", ""),
-                     r.get("timestamp", ""), r.get("last_seen", ""))
-                )
-                inserted += 1
-            except Exception:
-                pass
-        db.commit()
 
-    return jsonify({"inserted": inserted, "received": len(records)})
+    if "snapshots" in data:
+        snapshots = data["snapshots"]
+        if not snapshots:
+            return jsonify({"inserted": 0})
+        with get_db() as db:
+            db.execute("CREATE TABLE IF NOT EXISTS snapshots (item_name TEXT, item_lvl TEXT, server TEXT, data TEXT, updated_at TEXT, UNIQUE(item_name, item_lvl, server))")
+            for s in snapshots:
+                db.execute(
+                    "INSERT OR REPLACE INTO snapshots (item_name, item_lvl, server, data, updated_at) VALUES (?, ?, ?, ?, ?)",
+                    (s.get("item_name", ""), s.get("item_lvl", "+0"), s.get("server", ""),
+                     json.dumps(s), datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+                )
+            db.commit()
+        return jsonify({"inserted": len(snapshots), "type": "snapshots"})
+
+    if "records" in data:
+        records = data["records"]
+        if not records:
+            return jsonify({"inserted": 0})
+        with get_db() as db:
+            for r in records:
+                try:
+                    db.execute(
+                        "INSERT OR IGNORE INTO prices (item_name, item_lvl, price, type, seller, server, timestamp, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        (r.get("item_name", ""), r.get("item_lvl", "+0"), r.get("price", 0),
+                         r.get("type", "sell"), r.get("seller", ""), r.get("server", ""),
+                         r.get("timestamp", ""), r.get("last_seen", ""))
+                    )
+                except Exception:
+                    pass
+            db.commit()
+        return jsonify({"inserted": len(records), "type": "records"})
+
+    return jsonify({"error": "records or snapshots required"}), 400
 
 
 @app.route("/api/items/names")
