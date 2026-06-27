@@ -481,11 +481,12 @@ def api_item_full(item):
     limit = request.args.get("limit", 500, type=int)
     server = request.args.get("server", "").strip() or None
     ptype = request.args.get("type", "sell").strip() or "sell"
+    candle_size = request.args.get("candle_size", None, type=int)
 
     if interval == "all":
-        ohlc = get_ohlc_data(item, lvl, "auto", limit=2000, server=server, ptype=ptype)
+        ohlc = get_ohlc_data(item, lvl, "auto", limit=2000, server=server, ptype=ptype, candle_size=candle_size)
     else:
-        ohlc = get_ohlc_data(item, lvl, interval, limit, server=server, ptype=ptype)
+        ohlc = get_ohlc_data(item, lvl, interval, limit, server=server, ptype=ptype, candle_size=candle_size)
 
     closes = [d["close"] for d in ohlc] if ohlc else []
 

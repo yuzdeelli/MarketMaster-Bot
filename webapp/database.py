@@ -313,7 +313,7 @@ def _parse_timestamp(ts):
         return None
 
 
-def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=None):
+def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=None, candle_size=None):
     """Pandas resample+ffill mantigi ile OHLC olusturma.
     1) Veritabanindan ham kayitlari cek
     2) IQR ile aykirilari temizle
@@ -321,6 +321,7 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
     4) View range ile filtrele (son N dakika)
     5) Candle size'a gore resample (open=first, high=max, low=min, close=last, volume=sum)
     6) Ffill: bos mumlari onceki fiyatla doldur
+    candle_size: saniye cinsinden mum boyutu (interval'dan bagimsiz, opsiyonel override)
     """
     from datetime import timedelta
 
@@ -473,6 +474,9 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
             else:
                 view_sec = 86400
                 candle_sec = 30 * 60
+
+        if candle_size is not None:
+            candle_sec = int(candle_size)
 
         start_epoch = max_epoch - view_sec
 

@@ -300,6 +300,9 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 .tv-btn{padding:4px 8px;font-size:10px;font-weight:600;border:none;border-radius:4px;background:transparent;color:#787b86;cursor:pointer;transition:all .15s;font-family:inherit}
 .tv-btn:hover{color:#131722;background:#f0f3fa}
 .tv-btn.active{background:#2962FF!important;color:#fff!important}
+.candle-btn{padding:4px 8px;font-size:10px;font-weight:600;border:none;border-radius:4px;background:transparent;color:#787b86;cursor:pointer;transition:all .15s;font-family:inherit}
+.candle-btn:hover{color:#131722;background:#f0f3fa}
+.candle-btn.active{background:#FF9800!important;color:#fff!important}
 .control-right-buttons{display:flex;gap:6px}
 .ctrl-icon-btn{padding:4px 10px;font-size:10px;font-weight:600;border:1px solid #e0e3eb;border-radius:4px;background:#fff;color:#555;cursor:pointer;transition:all .15s}
 .ctrl-icon-btn:hover{background:#f0f3fa;border-color:#c8ccd6;color:#131722}
@@ -631,6 +634,14 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
             <button class="type-btn active" data-type="candle">Mum</button>
             <button class="type-btn" data-type="line">Çizgi</button>
         </div>
+        <div class="control-timeframes" style="margin-top:4px">
+            <span style="font-size:10px;color:#999;margin-right:4px;line-height:22px">Mum:</span>
+            <button class="candle-btn" data-candle="60">1dk</button>
+            <button class="candle-btn active" data-candle="300">5dk</button>
+            <button class="candle-btn" data-candle="600">10dk</button>
+            <button class="candle-btn" data-candle="900">15dk</button>
+            <button class="candle-btn" data-candle="1800">30dk</button>
+        </div>
         <div class="control-right-buttons">
             <span id="liveIndicator" style="display:inline-flex;align-items:center;gap:5px;background:#e8f5e9;color:#2e7d32;font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;border:1px solid #a5d6a7"><span style="width:7px;height:7px;border-radius:50%;background:#4caf50;animation:pulse 1.5s infinite"></span>CANLI</span>
             <button class="ctrl-icon-btn" id="btnScreenshot" title="Ekran Goruntusu">Screenshot</button>
@@ -790,6 +801,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 
   let PRICES = {{ prices|tojson }};
   let currentRange = '1440';
+  let currentCandleSize = 300;
   let liveTimer = null;
   const TZ_OFFSET_SEC = 0;
 
@@ -1743,11 +1755,12 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     }
   }
 
-  async function fetchItemFull(interval, showLoading) {
+  async function fetchItemFull(interval, showLoading, candleSize) {
     if (showLoading) showShimmer();
     try {
       let url = '/api/item-full/' + encodeURIComponent(ITEM_NAME) + '?lvl=' + encodeURIComponent(ITEM_LVL) + '&interval=' + encodeURIComponent(interval);
       if (CURRENT_SERVER) url += '&server=' + encodeURIComponent(CURRENT_SERVER);
+      if (candleSize) url += '&candle_size=' + encodeURIComponent(candleSize);
       const resp = await fetch(url);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const data = await resp.json();
@@ -1791,9 +1804,9 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
   async function applyRange(interval) {
     currentRange = interval;
     document.querySelectorAll('.tv-btn').forEach(b => b.classList.toggle('active', b.dataset.interval === interval));
-    const full = await fetchItemFull(interval, true);
+    const full = await fetchItemFull(interval, true, currentCandleSize);
     if (!full.ohlc || full.ohlc.length < 2) {
-      const fallback = await fetchItemFull('auto', false);
+      const fallback = await fetchItemFull('auto', false, currentCandleSize);
       currentOHLC = fallback.ohlc;
       currentEMA9 = fallback.ema9;
       currentEMA21 = fallback.ema21;
@@ -1832,6 +1845,15 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 
   document.querySelectorAll('.tv-btn').forEach(btn => {
     btn.addEventListener('click', function() { applyRange(this.dataset.interval); });
+  });
+
+  document.querySelectorAll('.candle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      currentCandleSize = parseInt(this.dataset.candle);
+      document.querySelectorAll('.candle-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      applyRange(currentRange);
+    });
   });
 
   document.querySelectorAll('.type-btn').forEach(btn => {
@@ -1894,7 +1916,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
 
   (async () => {
     try {
-      const full = await fetchItemFull('auto', true);
+      const full = await fetchItemFull(currentRange, true, currentCandleSize);
       currentOHLC = full.ohlc;
       currentEMA9 = full.ema9;
       currentEMA21 = full.ema21;
@@ -1999,7 +2021,7 @@ td{padding:6px 8px;border-bottom:1px solid #f0f3fa;font-family:monospace;color:#
     if (liveTimer) clearInterval(liveTimer);
     liveTimer = setInterval(async () => {
       try {
-        const full = await fetchItemFull(currentRange, false);
+        const full = await fetchItemFull(currentRange, false, currentCandleSize);
         if (!full || !full.ohlc || full.ohlc.length === 0) return;
 
         currentOHLC = full.ohlc;
