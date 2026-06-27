@@ -100,13 +100,11 @@ def upload_db(token):
             return True
 
     vacuum_db()
-    db_gz = compress_db()
 
-    size_mb = os.path.getsize(db_gz) / (1024 * 1024)
-    print(f"DB yukleniyor ({size_mb:.1f} MB compressed)...")
+    size_mb = os.path.getsize(DB_LOCAL) / (1024 * 1024)
+    print(f"DB yukleniyor ({size_mb:.1f} MB)...")
 
-    code, text = upload_file(token, db_gz, DB_REMOTE_PATH + ".gz")
-    os.remove(db_gz)
+    code, text = upload_file(token, DB_LOCAL, DB_REMOTE_PATH)
 
     if code in (200, 201):
         print("  DB yuklendi!")
