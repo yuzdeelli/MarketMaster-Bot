@@ -483,6 +483,20 @@ def api_item_full(item):
     ptype = request.args.get("type", "sell").strip() or "sell"
     candle_size = request.args.get("candle_size", None, type=int)
 
+    snapshot_data = None
+    if server:
+        try:
+            from webapp.database import get_db
+            with get_db() as db:
+                row = db.execute(
+                    "SELECT data FROM snapshots WHERE item_name=? AND item_lvl=? AND server LIKE ?",
+                    (item, lvl, f"%{server}%")
+                ).fetchone()
+                if row:
+                    snapshot_data = json.loads(row["data"])
+        except Exception:
+            pass
+
     if interval == "all":
         ohlc = get_ohlc_data(item, lvl, "auto", limit=2000, server=server, ptype=ptype, candle_size=candle_size)
     else:
@@ -501,8 +515,15 @@ def api_item_full(item):
     last_ema21 = next((v for v in reversed(ema21_series) if v is not None), None)
     last_rsi_ohlc = next((v for v in reversed(rsi_series) if v is not None), None)
 
-    stats = get_item_stats(item, lvl, server=server)
-    analytics = get_full_analytics(item, lvl, server=server)
+    if snapshot_data:
+        stats = {"buy": snapshot_data.get("buy_stats", {}), "sell": snapshot_data.get("sell_stats", {})}
+        analytics = {"sell_vol": snapshot_data.get("sell_count", 0), "buy_vol": snapshot_data.get("buy_count", 0),
+                      "total_vol": snapshot_data.get("sell_count", 0) + snapshot_data.get("buy_count", 0),
+                      "last_price": snapshot_data.get("last_price", 0)}
+    else:
+        stats = get_item_stats(item, lvl, server=server)
+        analytics = get_full_analytics(item, lvl, server=server)
+
     prices = get_price_history(item, lvl, limit=200, server=server)
 
     sell_prices = [p["price"] for p in prices if p.get("type") == "sell" and p.get("price")]
