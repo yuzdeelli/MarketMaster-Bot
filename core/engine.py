@@ -169,7 +169,7 @@ class MarketEngine:
                         level = '+' + m.group(2) + m.group(3)
                 name = re.sub(r"\(\+?[0-9]+R?\)\s*$", "", name).strip()
                 seller = str(data.get("UserID", "") or "").strip()
-                now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 # +0 FILTRESI (reverse degilse uygula)
                 if not is_reverse_level(level) and should_skip_record(name, level):

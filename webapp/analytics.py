@@ -46,18 +46,23 @@ def golden_cross(prices, fast=5, slow=20):
     return "bearish"
 
 
-def volume_analysis(item, lvl="", server=None):
+def volume_analysis(item, lvl="", server=None, hours=None, minutes=None):
     """Count price updates in last 1h, 6h, 24h."""
     from webapp.database import get_db
+    from webapp.database import _time_filter
     with get_db() as db:
+        tf, tf_param = _time_filter(hours, minutes)
         sf = ""
         sparams = []
         if server:
             sf = " AND LOWER(TRIM(server)) LIKE LOWER(?)"
             sparams = [f"%{server}%"]
+        all_params = (item, lvl) + tuple(sparams)
+        if tf_param:
+            all_params = all_params + (tf_param,)
         rows = db.execute(
-            f"SELECT timestamp FROM prices WHERE item_name=? AND item_lvl=?{sf} ORDER BY id DESC LIMIT 1000",
-            (item, lvl) + tuple(sparams),
+            f"SELECT timestamp FROM prices WHERE item_name=? AND item_lvl=?{sf}{tf} ORDER BY id DESC LIMIT 1000",
+            all_params,
         ).fetchall()
     if not rows:
         return {"1h": 0, "6h": 0, "24h": 0}
@@ -79,10 +84,14 @@ def volume_analysis(item, lvl="", server=None):
     return {"1h": h1, "6h": h6, "24h": h24}
 
 
-def get_full_analytics(item, lvl="", server=None):
+def get_full_analytics(item, lvl="", server=None, hours=None, minutes=None):
     """Return all analytics for an item."""
-    sells = get_prices_for_rsi(item, lvl, limit=500, type_filter="sell", server=server)
-    prices = get_price_history(item, lvl, limit=200, server=server)
+    if hours is None and minutes is None:
+        from webapp.database import get_db, _find_analysis_minutes
+        with get_db() as db:
+            minutes = _find_analysis_minutes(db, item, lvl, server)
+    sells = get_prices_for_rsi(item, lvl, limit=500, type_filter="sell", server=server, hours=hours, minutes=minutes)
+    prices = get_price_history(item, lvl, limit=200, server=server, hours=hours, minutes=minutes)
 
     return {
         "rsi_sell": rsi(sells) if sells else None,
@@ -90,7 +99,7 @@ def get_full_analytics(item, lvl="", server=None):
         "ma_slow_20": moving_average(sells, 20) if len(sells) >= 20 else None,
         "ma_slow_50": moving_average(sells, 50) if len(sells) >= 50 else None,
         "golden_cross": golden_cross(sells, 5, 20),
-        "volume": volume_analysis(item, lvl, server=server),
+        "volume": volume_analysis(item, lvl, server=server, hours=hours, minutes=minutes),
         "data_points": len(prices),
     }
 

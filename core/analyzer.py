@@ -179,6 +179,9 @@ class MarketAnalyzer:
             sell_prices = df[df['type'].str.capitalize() == 'Sell']['price']
             buy_prices = df[df['type'].str.capitalize() == 'Buy']['price']
 
+            if len(sell_prices) < 3 and len(buy_prices) < 3:
+                return None
+
             sell_mode = sell_prices.mode().iloc[0] if not sell_prices.empty else 0
             buy_mode = buy_prices.mode().iloc[0] if not buy_prices.empty else 0
 
@@ -238,7 +241,7 @@ class MarketAnalyzer:
 
     def calculate_filtered_series(self, series):
         if series.empty: return series
-        Q1, Q3 = series.quantile(0.1), series.quantile(0.99)
+        Q1, Q3 = series.quantile(0.25), series.quantile(0.75)
         IQR = Q3 - Q1
         lower = Q1 - self.iqr_multiplier * IQR
         upper = Q3 + self.iqr_multiplier * IQR
@@ -249,7 +252,7 @@ class MarketAnalyzer:
         if series.empty:
             return None
 
-        Q1, Q3 = series.quantile(0.1), series.quantile(0.99)
+        Q1, Q3 = series.quantile(0.25), series.quantile(0.75)
         IQR = Q3 - Q1
         lower_bound = Q1 - self.iqr_multiplier * IQR
         upper_bound = Q3 + self.iqr_multiplier * IQR
@@ -259,8 +262,8 @@ class MarketAnalyzer:
         if filtered_series.empty:
             filtered_series = series
 
-        Q1 = filtered_series.quantile(0.1)
-        Q3 = filtered_series.quantile(0.99)
+        Q1 = filtered_series.quantile(0.25)
+        Q3 = filtered_series.quantile(0.75)
         n = len(filtered_series)
         mean = filtered_series.mean()
         std_dev = filtered_series.std() if n > 1 else 0

@@ -38,6 +38,17 @@ def initialize_database(db_path):
                 last_seen DATETIME
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS manual_price_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_name TEXT NOT NULL,
+                item_lvl TEXT,
+                server TEXT,
+                price INTEGER NOT NULL,
+                type TEXT NOT NULL CHECK(type IN ('Alis', 'Satis')),
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         for col, typ in [("seller", "TEXT"), ("last_seen", "DATETIME")]:
             try:
                 cursor.execute(f"ALTER TABLE prices ADD COLUMN {col} {typ}")
@@ -165,3 +176,55 @@ class DatabaseManager:
         except Exception as e:
             logger.exception(f"Fiyat listesi alinamadi: {e}")
             return []
+
+    def insert_manual_price(self, item_name, item_lvl, server, price, ptype):
+        try:
+            with self.get_connection() as conn:
+                conn.execute(
+                    """INSERT INTO manual_price_history (item_name, item_lvl, server, price, type)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (item_name, item_lvl or "", server, int(price), ptype)
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.exception(f"Manuel fiyat kaydi hatasi: {e}")
+            return False
+
+    def get_manual_price_history(self, item_name, item_lvl="", limit=100):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                if item_lvl in ["+0", "0", "", None]:
+                    cursor.execute("""
+                        SELECT id, item_name, item_lvl, server, price, type, timestamp
+                        FROM manual_price_history WHERE item_name = ?
+                        AND (item_lvl = '' OR item_lvl IS NULL OR item_lvl = '+0' OR item_lvl = '0')
+                        ORDER BY id DESC LIMIT ?
+                    """, (item_name, limit))
+                else:
+                    cursor.execute("""
+                        SELECT id, item_name, item_lvl, server, price, type, timestamp
+                        FROM manual_price_history WHERE item_name = ? AND item_lvl = ?
+                        ORDER BY id DESC LIMIT ?
+                    """, (item_name, item_lvl, limit))
+                return [
+                    {
+                        "id": r[0], "item_name": r[1], "item_lvl": r[2],
+                        "server": r[3], "price": r[4], "type": r[5], "timestamp": r[6]
+                    }
+                    for r in cursor.fetchall()
+                ]
+        except Exception as e:
+            logger.exception(f"Manuel fiyat listesi alinamadi: {e}")
+            return []
+
+    def delete_manual_price(self, record_id):
+        try:
+            with self.get_connection() as conn:
+                conn.execute("DELETE FROM manual_price_history WHERE id = ?", (record_id,))
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.exception(f"Manuel fiyat silme hatasi: {e}")
+            return False

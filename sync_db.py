@@ -120,12 +120,50 @@ def main():
         inserted = push_batch(batch)
         sent += inserted
         pct = int(sent / total * 100)
-        print(f"  {sent}/{total} ({pct}%)")
+        print(f"  Snapshots: {sent}/{total} ({pct}%)")
         time.sleep(0.3)
 
     state["last_synced_id"] = new_max_id
     save_state(state)
-    print(f"Tamamlandi: {sent} snapshot yuklendi.")
+    print(f"Snapshots: {sent} yuklendi.")
+
+    print(f"\nHam veriler push ediliyor...")
+    push_raw_records(last_id)
+
+
+def push_raw_records(last_id):
+    conn = sqlite3.connect(DB_LOCAL)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT item_name, item_lvl, price, type, server, seller, last_seen
+        FROM prices WHERE id > ?
+        ORDER BY id
+    """, (last_id,)).fetchall()
+    conn.close()
+
+    if not rows:
+        print("  Yeni ham veri yok.")
+        return
+
+    total = len(rows)
+    sent = 0
+    for i in range(0, total, BATCH_SIZE):
+        batch = [dict(r) for r in rows[i:i + BATCH_SIZE]]
+        try:
+            resp = requests.post(SYNC_URL,
+                                 json={"records": batch},
+                                 headers={"X-API-Token": PA_API_TOKEN, "Content-Type": "application/json"},
+                                 timeout=60)
+            if resp.status_code == 200:
+                sent += len(batch)
+            else:
+                print(f"  Hata {resp.status_code}")
+        except Exception as e:
+            print(f"  Exception: {e}")
+            break
+        time.sleep(0.3)
+
+    print(f"  Ham veri: {sent}/{total} yuklendi.")
 
 
 if __name__ == "__main__":

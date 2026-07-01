@@ -2,7 +2,7 @@ import sqlite3
 import os
 import sys
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 
 if getattr(sys, 'frozen', False):
@@ -12,6 +12,36 @@ else:
 
 DB_PATH = os.path.join(BASE_DIR, "app_data.db")
 _TICKER_FILE = os.path.join(BASE_DIR, "ticker.json")
+
+ANALYSIS_MINUTES = 10
+CASCADE_STEPS = [10, 20, 30, 60, 120, 240, 480, 1440]
+
+
+def _find_analysis_minutes(db, item, lvl, server=None):
+    try:
+        sf = ""
+        sparams = []
+        if server:
+            sf = " AND LOWER(TRIM(server)) LIKE LOWER(?)"
+            sparams = [f"%{server}%"]
+        lf = ""
+        params_base = [item]
+        if lvl:
+            lf = " AND item_lvl=?"
+            params_base.append(lvl)
+        now = datetime.now()
+        for m in CASCADE_STEPS:
+            cutoff = (now - timedelta(minutes=m)).strftime("%Y-%m-%d %H:%M:%S")
+            params = params_base + list(sparams) + [cutoff]
+            cnt = db.execute(
+                f"SELECT COUNT(*) FROM prices WHERE item_name=?{lf}{sf} AND last_seen >= ?",
+                params
+            ).fetchone()[0]
+            if cnt > 0:
+                return m
+        return CASCADE_STEPS[-1]
+    except Exception:
+        return CASCADE_STEPS[-1]
 
 
 def _should_hide_buy(item_name):
@@ -179,18 +209,25 @@ def insert_prices_batch(prices):
             )
 
 
-def _time_filter(hours=None):
-    if hours and hours > 0:
-        from datetime import datetime, timedelta
-        cutoff = (datetime.utcnow() - timedelta(hours=hours)).strftime("%Y-%m-%d")
-        return f" AND timestamp >= ?", cutoff
+def _time_filter(hours=None, minutes=None):
+    try:
+        if minutes and minutes > 0:
+            cutoff_dt = datetime.now() - timedelta(minutes=minutes)
+            cutoff = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
+            return f" AND last_seen >= ?", cutoff
+        if hours and hours > 0:
+            cutoff_dt = datetime.now() - timedelta(hours=hours)
+            cutoff = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
+            return f" AND last_seen >= ?", cutoff
+    except Exception:
+        pass
     return "", None
 
 
-def _calc_stats(db, item, lvl, ptype, hours=None, server=None):
+def _calc_stats(db, item, lvl, ptype, hours=None, minutes=None, server=None):
     if ptype.lower() == "buy" and _should_hide_buy(item):
         return None
-    tf, tf_param = _time_filter(hours)
+    tf, tf_param = _time_filter(hours, minutes)
     sf = ""
     lf = ""
     params = [item]
@@ -215,8 +252,8 @@ def _calc_stats(db, item, lvl, ptype, hours=None, server=None):
     ns = len(all_sellers) if all_sellers else n_all
 
     vals_sorted = sorted(all_vals)
-    q1_idx = int(n_all * 0.25)
-    q3_idx = int(n_all * 0.75)
+    q1_idx = int(n_all * 0.49)
+    q3_idx = int(n_all * 0.51)
     q1 = vals_sorted[q1_idx] if n_all >= 4 else vals_sorted[0]
     q3 = vals_sorted[q3_idx] if n_all >= 4 else vals_sorted[-1]
     iqr = q3 - q1
@@ -229,8 +266,8 @@ def _calc_stats(db, item, lvl, ptype, hours=None, server=None):
     n = len(vals)
     vals_sorted = sorted(vals)
     median = vals_sorted[n // 2] if n % 2 else (vals_sorted[n // 2 - 1] + vals_sorted[n // 2]) // 2
-    trimmed_q1 = vals_sorted[n // 4] if n >= 4 else vals_sorted[0]
-    trimmed_q3 = vals_sorted[3 * n // 4] if n >= 4 else vals_sorted[-1]
+    trimmed_q1 = vals_sorted[int(n * 0.49)] if n >= 4 else vals_sorted[0]
+    trimmed_q3 = vals_sorted[int(n * 0.51)] if n >= 4 else vals_sorted[-1]
     mean_val = sum(vals) / n
     variance = sum((v - mean_val) ** 2 for v in vals) / n
     std = round(variance ** 0.5)
@@ -251,9 +288,11 @@ def _calc_stats(db, item, lvl, ptype, hours=None, server=None):
     }
 
 
-def get_item_stats(item, lvl="", hours=None, server=None):
+def get_item_stats(item, lvl="", hours=None, minutes=None, server=None):
     with get_db() as db:
-        tf, tf_param = _time_filter(hours)
+        if hours is None and minutes is None:
+            minutes = _find_analysis_minutes(db, item, lvl, server)
+        tf, tf_param = _time_filter(hours, minutes)
         sf = ""
         lf = ""
         params = [item]
@@ -270,13 +309,14 @@ def get_item_stats(item, lvl="", hours=None, server=None):
         ).fetchone()[0]
         if cnt == 0:
             return None
-        buy = _calc_stats(db, item, lvl, "buy", hours, server)
-        sell = _calc_stats(db, item, lvl, "sell", hours, server)
+        buy = _calc_stats(db, item, lvl, "buy", hours, minutes, server)
+        sell = _calc_stats(db, item, lvl, "sell", hours, minutes, server)
         return {"buy": buy, "sell": sell}
 
 
-def get_price_history(item, lvl="", limit=200, server=None, ptype=None):
+def get_price_history(item, lvl="", limit=200, server=None, ptype=None, hours=None, minutes=None):
     with get_db() as db:
+        tf, tf_param = _time_filter(hours, minutes)
         query = "SELECT id, price, type, server, timestamp FROM prices WHERE item_name=? AND item_lvl=?"
         params = [item, lvl]
         if server:
@@ -285,6 +325,9 @@ def get_price_history(item, lvl="", limit=200, server=None, ptype=None):
         if ptype:
             query += " AND LOWER(type)=?"
             params.append(ptype.lower())
+        if tf_param:
+            query += f" {tf}"
+            params.append(tf_param)
         query += " ORDER BY id DESC LIMIT ?"
         params.append(limit)
         rows = db.execute(query, params).fetchall()
@@ -392,8 +435,8 @@ def get_ohlc_data(item, lvl="", interval="1440", limit=500, server=None, ptype=N
         prices_all = sorted([r["price"] for r in all_records])
         n_prices = len(prices_all)
         if n_prices > 5:
-            q1_idx = int(n_prices * 0.25)
-            q3_idx = int(n_prices * 0.75)
+            q1_idx = int(n_prices * 0.49)
+            q3_idx = int(n_prices * 0.51)
             q1 = prices_all[q1_idx]
             q3 = prices_all[q3_idx]
             iqr = q3 - q1
@@ -667,9 +710,11 @@ def get_db_stats(hours=None):
         return {"items": items, "servers": servers, "total_prices": total, "last_scan": last or "-"}
 
 
-def get_item_stats_for_server(item, lvl, server, hours=None):
+def get_item_stats_for_server(item, lvl, server, hours=None, minutes=None):
     with get_db() as db:
-        tf, tf_param = _time_filter(hours)
+        if hours is None and minutes is None:
+            minutes = _find_analysis_minutes(db, item, lvl, server)
+        tf, tf_param = _time_filter(hours, minutes)
         params = [item, lvl, f"%{server}%"]
         if tf_param:
             params.append(tf_param)
@@ -718,27 +763,36 @@ def get_all_items_for_server(server, hours=None):
         return [dict(r) for r in rows]
 
 
-def get_prices_for_rsi(item, lvl="", limit=500, type_filter=None, server=None):
+def get_prices_for_rsi(item, lvl="", limit=500, type_filter=None, server=None, hours=None, minutes=None):
     with get_db() as db:
+        tf, tf_param = _time_filter(hours, minutes)
         sf = ""
         sparams = []
         if server:
             sf = " AND LOWER(TRIM(server)) LIKE LOWER(?)"
             sparams = [f"%{server}%"]
         if type_filter:
+            params = (item, lvl, norm_type(type_filter)) + tuple(sparams)
+            if tf_param:
+                params = params + (tf_param,)
             rows = db.execute(
-                f"SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)=?{sf} ORDER BY id DESC LIMIT ?",
-                (item, lvl, norm_type(type_filter)) + tuple(sparams) + (limit,),
+                f"SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)=?{sf}{tf} ORDER BY id DESC LIMIT ?",
+                params + (limit,),
             ).fetchall()
             return [dict(r) for r in rows]
         else:
+            params_buy = (item, lvl) + tuple(sparams)
+            params_sell = (item, lvl) + tuple(sparams)
+            if tf_param:
+                params_buy = params_buy + (tf_param,)
+                params_sell = params_sell + (tf_param,)
             buys = db.execute(
-                f"SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)='buy'{sf} ORDER BY id DESC LIMIT ?",
-                (item, lvl) + tuple(sparams) + (limit,),
+                f"SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)='buy'{sf}{tf} ORDER BY id DESC LIMIT ?",
+                params_buy + (limit,),
             ).fetchall()
             sells = db.execute(
-                f"SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)='sell'{sf} ORDER BY id DESC LIMIT ?",
-                (item, lvl) + tuple(sparams) + (limit,),
+                f"SELECT price, timestamp FROM prices WHERE item_name=? AND item_lvl=? AND LOWER(type)='sell'{sf}{tf} ORDER BY id DESC LIMIT ?",
+                params_sell + (limit,),
             ).fetchall()
             return [dict(r) for r in buys], [dict(r) for r in sells]
 

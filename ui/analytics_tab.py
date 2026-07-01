@@ -10,11 +10,11 @@ from PySide6.QtGui import QColor, QAction
 import sqlite3
 
 SERVER_GROUPS = {
-    "Tum Zero": ["ZERO 3", "ZERO 4", "ZERO 5", "ZERO 8"],
-    "Tum Pandora": ["PANDORA 3", "PANDORA 4"],
-    "Tum Agartha": ["AGARTHA 3", "AGARTHA 4"],
-    "Tum Destan": ["DESTAN 2", "DESTAN 3"],
-    "Tum Oreads": ["OREADS 2", "OREADS 3"],
+    "Tüm Zero": ["ZERO 3", "ZERO 4", "ZERO 5", "ZERO 8"],
+    "Tüm Pandora": ["PANDORA 3", "PANDORA 4"],
+    "Tüm Agartha": ["AGARTHA 3", "AGARTHA 4"],
+    "Tüm Destan": ["DESTAN 2", "DESTAN 3"],
+    "Tüm Oreads": ["OREADS 2", "OREADS 3"],
 }
 
 LVL_OPTIONS = [f"+{i}" for i in range(11)] + [f"+{i}R" for i in range(1, 22)]

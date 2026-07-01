@@ -1,6 +1,7 @@
 import os
 import sys
 import io
+import json
 import contextlib
 import sqlite3
 import threading
@@ -26,6 +27,7 @@ from ui.opportunity_tab import OpportunityTab
 from ui.portfolio_tab import PortfolioTab
 from ui.arbitrage_tab import ArbitrageTab
 from ui.analytics_tab import AnalyticsTab
+from ui.market_dominance_tab import MarketDominanceTab
 from ui.settings_tab import SettingsTab
 from ui.assistant_ui import MasterAssistantWindow
 
@@ -187,6 +189,7 @@ class KnightMarketMasterV3(QMainWindow):
         tab_opportunity = QWidget()
         tab_arbitrage = QWidget()
         tab_analytics = QWidget()
+        tab_dominance = QWidget()
         tab_excel = QWidget()
         tab_settings = QWidget()
 
@@ -195,6 +198,7 @@ class KnightMarketMasterV3(QMainWindow):
         self.tabview.addTab(tab_opportunity, "CANLI FIRSAT LISTESI")
         self.tabview.addTab(tab_arbitrage, "ARBITRAJ")
         self.tabview.addTab(tab_analytics, "ANALIZ")
+        self.tabview.addTab(tab_dominance, "PIYASA HAKIMIYETI")
         self.tabview.addTab(tab_excel, "Excel Export")
         self.tabview.addTab(tab_settings, "Ayarlar")
 
@@ -203,6 +207,7 @@ class KnightMarketMasterV3(QMainWindow):
         self.opportunity_tab = OpportunityTab(self, tab_opportunity)
         self.arbitrage_tab = ArbitrageTab(self, tab_arbitrage)
         self.analytics_tab = AnalyticsTab(self, tab_analytics)
+        self.dominance_tab = MarketDominanceTab(self, tab_dominance)
         self.portfolio_tab = PortfolioTab(self, tab_excel)
         self.settings_tab = SettingsTab(self, tab_settings)
 
@@ -213,8 +218,19 @@ class KnightMarketMasterV3(QMainWindow):
             conn = sqlite3.connect(self.db_name, timeout=15)
             cursor = conn.cursor()
             cursor.execute("SELECT DISTINCT item_name FROM prices ORDER BY item_name ASC")
-            self.all_items_list = [row[0] for row in cursor.fetchall()]
+            db_items = [row[0] for row in cursor.fetchall()]
             conn.close()
+            try:
+                port_path = os.path.join(self.BASE_DIR, "portfolio_data.json")
+                with open(port_path, "r", encoding="utf-8") as f:
+                    port_data = json.load(f)
+                port_order = [p["name"] for p in port_data]
+                port_set = set(port_order)
+                ordered = [n for n in port_order if n in set(db_items)]
+                remaining = [n for n in db_items if n not in port_set]
+                self.all_items_list = ordered + sorted(remaining)
+            except Exception:
+                self.all_items_list = db_items
             if hasattr(self, 'strategy_tab') and hasattr(self.strategy_tab, 'it_combo'):
                 self.strategy_tab.it_combo.configure_values(self.all_items_list)
             if hasattr(self, 'portfolio_tab') and hasattr(self.portfolio_tab, 'port_item_combo'):
@@ -258,7 +274,7 @@ class KnightMarketMasterV3(QMainWindow):
                     time_limit_minutes=params["time_limit_minutes"],
                     start_date=params["start_date"], end_date=params["end_date"],
                     server=server)
-                return self.stats_cache[key]
+            return self.stats_cache[key]
             return self.stats_cache[key]
 
     def calculate_auto_sell(self, stats, buy_price):

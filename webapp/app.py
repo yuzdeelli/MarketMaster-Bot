@@ -36,6 +36,11 @@ except Exception:
 
 _rate_data = {}
 _burst_data = {}
+
+try:
+    init_db()
+except Exception:
+    pass
 ONLINE_TIMEOUT = 300
 ONLINE_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "online_users.json")
 RATE_WINDOW = 6
@@ -611,6 +616,15 @@ def api_sync():
 
     from webapp.database import get_db
 
+    if data.get("reset"):
+        with get_db() as db:
+            db.execute("DROP TABLE IF EXISTS prices")
+            db.execute("DROP TABLE IF EXISTS snapshots")
+            db.commit()
+        from webapp.database import init_db
+        init_db()
+        return jsonify({"status": "ok", "message": "DB reset"})
+
     if "snapshots" in data:
         snapshots = data["snapshots"]
         if not snapshots:
@@ -645,6 +659,21 @@ def api_sync():
         return jsonify({"inserted": len(records), "type": "records"})
 
     return jsonify({"error": "records or snapshots required"}), 400
+
+
+@app.route("/api/reset-db", methods=["POST"])
+def api_reset_db():
+    token = request.headers.get("X-API-Token", "")
+    if not verify_api_token(token):
+        return jsonify({"error": "Unauthorized"}), 401
+    from webapp.database import get_db
+    with get_db() as db:
+        db.execute("DROP TABLE IF EXISTS prices")
+        db.execute("DROP TABLE IF EXISTS snapshots")
+        db.commit()
+    from webapp.database import init_db
+    init_db()
+    return jsonify({"status": "ok", "message": "DB reset and recreated"})
 
 
 @app.route("/api/items/names")

@@ -2,7 +2,7 @@ import time
 import os
 import sys
 
-SYNC_INTERVAL = 600
+SYNC_INTERVAL = 240
 PYTHONANYWHERE_USER = "marketmaster"
 
 def run_sync():

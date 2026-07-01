@@ -1,1 +1,1 @@
-t:+1
+dread shield:+7,+1R

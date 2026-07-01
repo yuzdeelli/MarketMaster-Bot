@@ -639,6 +639,11 @@ class BotTab:
                 price = r.get("Fiyat", 0)
                 server = r.get("Sunucu", "")
                 ts = r.get("Zaman", "")
+                if ts and len(ts) <= 10 and "." in ts:
+                    parts = ts.split(".")
+                    if len(parts) == 3:
+                        now_time = datetime.now().strftime("%H:%M:%S")
+                        ts = f"{parts[2]}-{parts[1]}-{parts[0]} {now_time}"
                 seller = str(r.get("UserID", "") or "").strip()
                 m = re.search(r"^(.*?)[\s]*\+([0-9]+)(R?)\s*$", name)
                 if m:
